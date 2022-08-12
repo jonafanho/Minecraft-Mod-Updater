@@ -1,3 +1,7 @@
+plugins {
+	id "com.github.johnrengelman.shadow" version "7.1.2"
+}
+
 architectury {
 	platformSetupLoomIde()
 	forge()
@@ -22,6 +26,26 @@ processResources {
 
 	filesMatching("META-INF/mods.toml") {
 		expand "version": project.version
+	}
+}
+
+shadowJar {
+	exclude "fabric.mod.json"
+	exclude "architectury.common.json"
+
+	configurations = [project.configurations.shadowCommon]
+	classifier "dev-shadow"
+}
+
+remapJar {
+	input.set shadowJar.archiveFile
+	dependsOn shadowJar
+	classifier null
+}
+
+components.java {
+	withVariantsFromConfiguration(project.configurations.shadowRuntimeElements) {
+		skip()
 	}
 }
 

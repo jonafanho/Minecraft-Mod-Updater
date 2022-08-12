@@ -1,11 +1,11 @@
 package updater;
 
-import net.fabricmc.api.ModInitializer;
+import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint;
 
-public class UpdaterFabric implements ModInitializer {
-	
+public class UpdaterFabric implements PreLaunchEntrypoint {
+
 	@Override
-	public void onInitialize() {
-
+	public void onPreLaunch() {
+		Updater.init();
 	}
 }

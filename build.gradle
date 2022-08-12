@@ -27,10 +27,6 @@ subprojects {
 		silentMojangMappingsLicense()
 	}
 
-	configurations {
-		shadowCommon
-	}
-
 	dependencies {
 		minecraft "com.mojang:minecraft:${minecraft_version}"
 		mappings loom.officialMojangMappings()

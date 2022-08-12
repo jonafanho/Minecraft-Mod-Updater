@@ -8,7 +8,6 @@ version = "${version}"
 displayName = "Minecraft Mod Updater"
 authors = "Jonathan Ho"
 description = "A Minecraft mod to auto-update other mods."
-logoFile = "icon.png"
 
 [[dependencies.updater]]
 modId = "forge"
