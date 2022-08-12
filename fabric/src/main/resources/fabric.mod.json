@@ -1,0 +1,29 @@
+{
+	"schemaVersion": 1,
+	"id": "updater",
+	"version": "${version}",
+	"name": "Minecraft Mod Updater",
+	"description": "A Minecraft mod to auto-update other mods.",
+	"authors": [
+		"Jonathan Ho"
+	],
+	"contact": {
+		"homepage": "https://www.curseforge.com/minecraft/mc-mods/minecraft-transit-railway",
+		"sources": "https://github.com/jonafanho/Minecraft-Mod-Updater"
+	},
+	"license": "MIT",
+	"icon": "icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"updater.UpdaterFabric"
+		],
+		"modmenu": [
+			"updater.ModMenuConfig"
+		]
+	},
+	"depends": {
+		"fabric": "*",
+		"minecraft": "*"
+	}
+}

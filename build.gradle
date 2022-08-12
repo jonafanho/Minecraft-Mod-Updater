@@ -1,0 +1,115 @@
+import groovy.json.JsonSlurper
+import org.apache.tools.ant.filters.ReplaceTokens
+
+plugins {
+	id "architectury-plugin" version "3.4-SNAPSHOT"
+	id "de.undercouch.download" version "4.1.2"
+	id "dev.architectury.loom" version "0.12.0-SNAPSHOT" apply false
+}
+
+def default_minecraft_version = "1.16.5"
+def minecraft_version = rootProject.properties.containsKey("buildVersion") ? rootProject.getProperties().get("buildVersion") : default_minecraft_version
+def minecraft_main_version = minecraft_version.split("\\.")[1] as int
+
+rootProject.ext.fabric_loader_version = new JsonSlurper().parse(("https://meta.fabricmc.net/v2/versions/loader/" + minecraft_version).toURL())[0]["loader"]["version"]
+rootProject.ext.forge_version = minecraft_version + "-" + new JsonSlurper().parse(("https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json").toURL())["promos"][minecraft_version + "-latest"]
+rootProject.ext.fabric_api_version = getModrinthVersion("fabric", minecraft_version, "fabric-api")
+rootProject.ext.mod_menu_version = getModrinthVersion("fabric", minecraft_version, "modmenu")
+
+architectury {
+	minecraft = minecraft_version
+}
+
+subprojects {
+	apply plugin: "dev.architectury.loom"
+
+	loom {
+		silentMojangMappingsLicense()
+	}
+
+	configurations {
+		shadowCommon
+	}
+
+	dependencies {
+		minecraft "com.mojang:minecraft:${minecraft_version}"
+		mappings loom.officialMojangMappings()
+	}
+}
+
+task setupFiles() {
+	System.out.println("Fabric Loader: " + rootProject.fabric_loader_version)
+	System.out.println("Forge: " + rootProject.forge_version)
+	System.out.println("Fabric API: " + rootProject.fabric_api_version)
+	System.out.println("Mod Menu: " + rootProject.mod_menu_version)
+
+	download {
+		src "https://github.com/jonafanho/Minecraft-Mappings/archive/refs/heads/1.${minecraft_main_version}.zip"
+		dest "common/src/main/java/updater/mappings/mappings.zip"
+		overwrite true
+		retries - 1
+	}
+	copy {
+		outputs.upToDateWhen { false }
+		from(zipTree("common/src/main/java/updater/mappings/mappings.zip")) { eachFile { file -> file.relativePath = new RelativePath(true, file.relativePath.segments.drop(1) as String[]) } }
+		into "common/src/main/java/updater/mappings"
+		filter(ReplaceTokens, tokens: ["package": "updater.mappings"])
+	}
+	ant.path { ant.fileset(dir: "common/src/main/java/updater/mappings", includes: "Fabric*.java") }.list().each {
+		ant.move(file: it, todir: "fabric/src/main/java/updater/mappings")
+	}
+	ant.path { ant.fileset(dir: "common/src/main/java/updater/mappings", includes: "Forge*.java") }.list().each {
+		ant.move(file: it, todir: "forge/src/main/java/updater/mappings")
+	}
+
+	delete fileTree("common/src/main/java/updater/mappings/BlockEntityClientSerializableMapper.java")
+	delete fileTree("common/src/main/java/updater/mappings/DeferredRegisterHolder.java")
+	delete fileTree("common/src/main/java/updater/mappings/NetworkUtilities.java")
+	delete fileTree("common/src/main/java/updater/mappings/RegistryUtilities.java")
+	delete fileTree("common/src/main/java/updater/mappings/RegistryUtilitiesClient.java")
+	delete fileTree("forge/src/main/java/updater/mappings/ForgeUtilities.java")
+}
+
+allprojects {
+	apply plugin: "architectury-plugin"
+
+	version = minecraft_version + "-" + rootProject.mod_version
+	group = rootProject.maven_group
+
+	repositories {
+		maven { url = "https://maven.terraformersmc.com/" }
+	}
+
+	tasks.withType(JavaCompile) {
+		options.encoding = "UTF-8"
+
+		if (minecraft_main_version == 16) {
+			def targetVersion = 8
+			if (JavaVersion.current().isJava9Compatible()) {
+				options.release = targetVersion
+			}
+		} else if (minecraft_main_version == 17) {
+			options.release = 16
+		} else {
+			options.release = 17
+		}
+	}
+
+	afterEvaluate {
+		for (def task in it.tasks) {
+			if (task != rootProject.tasks.setupFiles) {
+				task.dependsOn rootProject.tasks.setupFiles
+			}
+		}
+	}
+}
+
+static def getModrinthVersion(loader, minecraftVersion, projectId) {
+	def versionsArray = new JsonSlurper().parse(("https://api.modrinth.com/v2/project/" + projectId + "/version").toURL())
+	for (def versionElement : versionsArray) {
+		if (versionElement["loaders"].contains(loader) && versionElement["game_versions"].contains(minecraftVersion)) {
+			return versionElement["version_number"]
+		}
+	}
+	return ""
+}

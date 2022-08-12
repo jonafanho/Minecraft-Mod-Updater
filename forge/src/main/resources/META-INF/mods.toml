@@ -1,0 +1,25 @@
+modLoader = "javafml"
+loaderVersion = "[36,)"
+license = "MIT"
+
+[[mods]]
+modId = "updater"
+version = "${version}"
+displayName = "Minecraft Mod Updater"
+authors = "Jonathan Ho"
+description = "A Minecraft mod to auto-update other mods."
+logoFile = "icon.png"
+
+[[dependencies.updater]]
+modId = "forge"
+mandatory = true
+versionRange = "[36,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.updater]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.16.5,)"
+ordering = "NONE"
+side = "BOTH"

@@ -1,0 +1,66 @@
+architectury {
+	platformSetupLoomIde()
+	forge()
+}
+
+configurations {
+	common
+	shadowCommon
+	compileClasspath.extendsFrom common
+	runtimeClasspath.extendsFrom common
+	developmentForge.extendsFrom common
+}
+
+dependencies {
+	forge "net.minecraftforge:forge:${rootProject.forge_version}"
+	common(project(path: ":common", configuration: "namedElements")) { transitive false }
+	shadowCommon(project(path: ":common", configuration: "transformProductionForge")) { transitive = false }
+}
+
+processResources {
+	inputs.property "version", project.version
+
+	filesMatching("META-INF/mods.toml") {
+		expand "version": project.version
+	}
+}
+
+task moveForgeBuilds() {
+	doLast {
+		delete fileTree("../build/release").matching {
+			include "**/-forge*"
+		}
+		delete fileTree("../build/libs").matching {
+			include "**/-forge*"
+		}
+		delete fileTree("../build/latest").matching {
+			include "**/-forge*"
+		}
+		copy {
+			from "build/libs"
+			into "../build/release"
+			rename "(.+)", "Mod-Updater-\$1"
+		}
+		copy {
+			from "../build/release"
+			into "../build/latest"
+			rename { fileName -> fileName.replace(rootProject.mod_version, "latest") }
+		}
+		copy {
+			from "../build/release"
+			include "*dev-shadow.jar"
+			into "../build/libs"
+		}
+		delete fileTree("../build/release").matching {
+			include "*dev-shadow.jar"
+		}
+	}
+}
+
+afterEvaluate {
+	for (def task in it.tasks) {
+		if (task == tasks.build) {
+			task.finalizedBy tasks.moveForgeBuilds
+		}
+	}
+}
