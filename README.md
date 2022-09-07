@@ -3,8 +3,6 @@
 ## License
 
 This project is licensed with the [MIT License](https://opensource.org/licenses/MIT).
-All [Noto fonts](http://www.google.com/get/noto/), bundled with this mod, are licensed with
-the [Open Font License](http://scripts.sil.org/OFL).
 
 ## Questions? Comments? Complaints?
 
