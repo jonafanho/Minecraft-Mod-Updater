@@ -13,7 +13,6 @@ def minecraft_main_version = minecraft_version.split("\\.")[1] as int
 
 rootProject.ext.fabric_loader_version = new JsonSlurper().parse(("https://meta.fabricmc.net/v2/versions/loader/" + minecraft_version).toURL())[0]["loader"]["version"]
 rootProject.ext.forge_version = minecraft_version + "-" + new JsonSlurper().parse(("https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json").toURL())["promos"][minecraft_version + "-latest"]
-rootProject.ext.fabric_api_version = getModrinthVersion("fabric", minecraft_version, "fabric-api")
 rootProject.ext.mod_menu_version = getModrinthVersion("fabric", minecraft_version, "modmenu")
 
 architectury {
@@ -36,7 +35,6 @@ subprojects {
 task setupFiles() {
 	System.out.println("Fabric Loader: " + rootProject.fabric_loader_version)
 	System.out.println("Forge: " + rootProject.forge_version)
-	System.out.println("Fabric API: " + rootProject.fabric_api_version)
 	System.out.println("Mod Menu: " + rootProject.mod_menu_version)
 
 	download {
@@ -48,22 +46,11 @@ task setupFiles() {
 	copy {
 		outputs.upToDateWhen { false }
 		from(zipTree("common/src/main/java/updater/mappings/mappings.zip")) { eachFile { file -> file.relativePath = new RelativePath(true, file.relativePath.segments.drop(1) as String[]) } }
+		include "**/ScreenMapper.java"
+		include "**/Text.java"
 		into "common/src/main/java/updater/mappings"
 		filter(ReplaceTokens, tokens: ["package": "updater.mappings"])
 	}
-	ant.path { ant.fileset(dir: "common/src/main/java/updater/mappings", includes: "Fabric*.java") }.list().each {
-		ant.move(file: it, todir: "fabric/src/main/java/updater/mappings")
-	}
-	ant.path { ant.fileset(dir: "common/src/main/java/updater/mappings", includes: "Forge*.java") }.list().each {
-		ant.move(file: it, todir: "forge/src/main/java/updater/mappings")
-	}
-
-	delete fileTree("common/src/main/java/updater/mappings/BlockEntityClientSerializableMapper.java")
-	delete fileTree("common/src/main/java/updater/mappings/DeferredRegisterHolder.java")
-	delete fileTree("common/src/main/java/updater/mappings/NetworkUtilities.java")
-	delete fileTree("common/src/main/java/updater/mappings/RegistryUtilities.java")
-	delete fileTree("common/src/main/java/updater/mappings/RegistryUtilitiesClient.java")
-	delete fileTree("forge/src/main/java/updater/mappings/ForgeUtilities.java")
 }
 
 allprojects {

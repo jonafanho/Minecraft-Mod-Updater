@@ -22,7 +22,6 @@
 		]
 	},
 	"depends": {
-		"fabric": "*",
 		"minecraft": "*"
 	}
 }
