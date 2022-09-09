@@ -27,7 +27,7 @@ public class Updater {
 
 		final JsonObject luObject = new JsonObject();
 		luObject.addProperty("id", "london-underground-addon");
-		mtrObject.addProperty("source", "latest");
+		luObject.addProperty("source", "latest");
 
 		final JsonObject modMenuObject = new JsonObject();
 		modMenuObject.addProperty("id", "modmenu");
@@ -56,7 +56,7 @@ public class Updater {
 		try {
 			final JsonObject configObject = new JsonParser().parse(FileUtils.readFileToString(configFile, Charset.defaultCharset())).getAsJsonObject();
 
-			configObject.getAsJsonArray("server").forEach(serverElement -> {
+			configObject.getAsJsonArray("synced").forEach(serverElement -> {
 				final String url = serverElement.getAsString();
 				System.out.println("Reading mods from " + url);
 				try (InputStream inputStream = new URL(url).openStream()) {
