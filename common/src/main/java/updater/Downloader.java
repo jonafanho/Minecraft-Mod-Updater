@@ -33,7 +33,7 @@ public class Downloader {
 		this.minecraftVersion = minecraftVersion;
 		this.modLoader = modLoader;
 		modsPath = gameDirectory.resolve("mods");
-
+		printCurseForgeKey();
 		visitedMods.add("minecraft-transit-railway");
 		visitedMods.add("XKPAmI6u");
 		visitedMods.add("266707");
@@ -160,6 +160,13 @@ public class Downloader {
 
 	private static boolean hashMatch(String expectedHash, Path path) throws IOException {
 		return DigestUtils.sha1Hex(Files.newInputStream(path)).equals(expectedHash);
+	}
+
+	@SuppressWarnings("all")
+	private static void printCurseForgeKey() {
+		if (Keys.CURSE_FORGE_KEY.length() > 8) {
+			System.out.println("Using CurseForge API key: " + Keys.CURSE_FORGE_KEY.substring(0, 4) + "..." + Keys.CURSE_FORGE_KEY.substring(Keys.CURSE_FORGE_KEY.length() - 4));
+		}
 	}
 
 	public enum ModLoader {
