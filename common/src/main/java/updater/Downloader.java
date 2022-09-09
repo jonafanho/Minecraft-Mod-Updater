@@ -9,6 +9,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -42,9 +43,6 @@ public class Downloader {
 		});
 
 		printCurseForgeKey();
-		visitedMods.add("minecraft-transit-railway");
-		visitedMods.add("XKPAmI6u");
-		visitedMods.add("266707");
 	}
 
 	public void getCurseForgeMod(String modId) {
@@ -57,7 +55,7 @@ public class Downloader {
 					final int fileId = fileObject.get("id").getAsInt();
 					String fileNameEncoded = fileObject.get("fileName").getAsString();
 					try {
-						fileNameEncoded = URLEncoder.encode(fileNameEncoded, "UTF-8");
+						fileNameEncoded = URLEncoder.encode(fileNameEncoded, StandardCharsets.UTF_8.name());
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -91,7 +89,7 @@ public class Downloader {
 	public void getMod(String modId, String url, String hash) {
 		final JsonArray tempArray = new JsonArray();
 		tempArray.add(new JsonObject());
-		final String newModId = modId.replace(".jar", "").replaceAll("[^\\w-_]", "");
+		final String newModId = modId.replace(".jar", "").replaceAll("[^\\w-_.]", "");
 		downloadMod(newModId, tempArray, jsonObject -> newModId + ".jar", jsonObject -> hash, jsonObject -> url, jsonObject -> {
 		});
 	}
@@ -123,7 +121,7 @@ public class Downloader {
 				final Path modPathTemp = modsPathTemp.resolve(fileName);
 
 				if (!hashMatch(getHash.apply(fileObject), modPathTemp)) {
-					for (int i = 0; i < DOWNLOAD_ATTEMPTS; i++) {
+					for (int i = 1; i <= DOWNLOAD_ATTEMPTS; i++) {
 						Updater.readConnectionSafe(getUrl.apply(fileObject), inputStream -> {
 							try {
 								FileUtils.copyInputStreamToFile(inputStream, modPathTemp.toFile());
@@ -133,8 +131,10 @@ public class Downloader {
 						}, "User-Agent", "Mozilla/5.0");
 
 						if (hashMatch(getHash.apply(fileObject), modPathTemp)) {
-							System.out.println("Downloaded " + fileName + (i > 0 ? " after " + (i + 1) + " tries" : ""));
+							System.out.println("Downloaded " + fileName);
 							break;
+						} else {
+							System.out.println("Failed to download " + fileName + " (" + i + "/" + DOWNLOAD_ATTEMPTS + ")");
 						}
 					}
 				}

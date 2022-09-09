@@ -131,7 +131,10 @@ public class Updater {
 						System.out.println("Skipping mod " + modId + ", unknown source \"" + source + "\"");
 					}
 				} else if (modObject.has("url") && modObject.has("sha1")) {
-					downloader.getMod(modId, modObject.get("url").getAsString(), modObject.get("sha1").getAsString());
+					final long millis = System.currentTimeMillis();
+					if ((!modObject.has("before") || millis < modObject.get("before").getAsLong()) && (!modObject.has("after") || millis >= modObject.get("after").getAsLong())) {
+						downloader.getMod(modId, modObject.get("url").getAsString(), modObject.get("sha1").getAsString());
+					}
 				} else {
 					System.out.println("Skipping mod " + modId + ", either \"source\" or \"url\" and \"sha1\" must be defined");
 				}

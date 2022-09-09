@@ -9,8 +9,8 @@
    ```json
    {
    	"synced": [
-   		"https://example.com/url.json",
-   		...
+   		"https://example1.com/url.json",
+   		"https://example2.com/url.json"
    	],
    	"local": [
    		{
@@ -26,7 +26,18 @@
    			"url": "https://example.com/My-Mod.jar",
    			"sha1": "0123456789012345678901234567890123456789"
    		},
-   		...
+   		{
+   			"id": "Another-Mod-1.0.0",
+   			"url": "https://example.com/Another-Mod-1.0.0.jar",
+   			"sha1": "0123456789012345678901234567890123456789",
+   			"before": 1615338000000
+   		},
+   		{
+   			"id": "Another-Mod-2.0.0",
+   			"url": "https://example.com/Another-Mod-2.0.0.jar",
+   			"sha1": "0123456789012345678901234567890123456789",
+   			"after": 1615338000000
+   		}
    	]
    }
    ```
@@ -42,6 +53,8 @@
       and `modrinth` are supported.
     * `url` (Required if `source` is not defined): The direct download link to the mod jar file.
     * `sha1` (Required if `source` is not defined): The expected sha1 hash of the mod jar file.
+    * `before` (Optional): If defined, only download the mod if the current time is before this value (in milliseconds since the UNIX epoch).
+    * `after` (Optional): If defined, only download the mod if the current time is on or after this value (in milliseconds since the UNIX epoch).
 
 ### Distributing a Modpack
 
@@ -62,7 +75,18 @@
    		"url": "https://example.com/My-Mod.jar",
    		"sha1": "0123456789012345678901234567890123456789"
    	},
-   	...
+   	{
+   		"id": "Another-Mod-1.0.0",
+   		"url": "https://example.com/Another-Mod-1.0.0.jar",
+   		"sha1": "0123456789012345678901234567890123456789",
+   		"before": 1615338000000
+   	},
+   	{
+   		"id": "Another-Mod-2.0.0",
+   		"url": "https://example.com/Another-Mod-2.0.0.jar",
+   		"sha1": "0123456789012345678901234567890123456789",
+   		"after": 1615338000000
+   	}
    ]
    ```
 1. Add the JSON URL to the `synced` section of the client configuration file.
