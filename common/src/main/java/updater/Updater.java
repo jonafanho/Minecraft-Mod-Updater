@@ -56,17 +56,21 @@ public class Updater {
 		try {
 			final JsonObject configObject = new JsonParser().parse(FileUtils.readFileToString(configFile, Charset.defaultCharset())).getAsJsonObject();
 
-			configObject.getAsJsonArray("synced").forEach(serverElement -> {
-				final String url = serverElement.getAsString();
-				System.out.println("Reading mods from " + url);
-				try (InputStream inputStream = new URL(url).openStream()) {
-					readConfig(new JsonParser().parse(new InputStreamReader(inputStream, StandardCharsets.UTF_8)).getAsJsonArray(), downloader);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			});
+			if (configObject.has("synced")) {
+				configObject.getAsJsonArray("synced").forEach(serverElement -> {
+					final String url = serverElement.getAsString();
+					System.out.println("Reading mods from " + url);
+					try (InputStream inputStream = new URL(url).openStream()) {
+						readConfig(new JsonParser().parse(new InputStreamReader(inputStream, StandardCharsets.UTF_8)).getAsJsonArray(), downloader);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				});
+			}
 
-			readConfig(configObject.getAsJsonArray("local"), downloader);
+			if (configObject.has("local")) {
+				readConfig(configObject.getAsJsonArray("local"), downloader);
+			}
 		} catch (Exception ignored) {
 			try {
 				System.out.println("Writing default config");
@@ -85,13 +89,26 @@ public class Updater {
 
 	private static void readConfig(JsonArray modArray, Downloader downloader) {
 		modArray.forEach(modElement -> {
-			final JsonObject modObject = modElement.getAsJsonObject();
-			final String modId = modObject.get("id").getAsString();
-			final String source = modObject.get("source").getAsString().toLowerCase();
-			if (source.equals("curseforge")) {
-				downloader.getCurseForgeMod(modId);
-			} else if (source.equals("modrinth")) {
-				downloader.getModrinthMod(modId);
+			try {
+				final JsonObject modObject = modElement.getAsJsonObject();
+				final String modId = modObject.get("id").getAsString();
+
+				if (modObject.has("source")) {
+					final String source = modObject.get("source").getAsString().toLowerCase();
+					if (source.equals("curseforge")) {
+						downloader.getCurseForgeMod(modId);
+					} else if (source.equals("modrinth")) {
+						downloader.getModrinthMod(modId);
+					} else {
+						System.out.println("Skipping mod " + modId + ", unknown source \"" + source + "\"");
+					}
+				} else if (modObject.has("url") && modObject.has("sha1")) {
+					downloader.getMod(modId, modObject.get("url").getAsString(), modObject.get("sha1").getAsString());
+				} else {
+					System.out.println("Skipping mod " + modId + ", either \"source\" or \"url\" and \"sha1\" must be defined");
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
 		});
 	}

@@ -33,6 +33,10 @@ public class Downloader {
 		this.minecraftVersion = minecraftVersion;
 		this.modLoader = modLoader;
 		modsPath = gameDirectory.resolve("mods");
+
+		visitedMods.add("minecraft-transit-railway");
+		visitedMods.add("XKPAmI6u");
+		visitedMods.add("266707");
 	}
 
 	public void getCurseForgeMod(String modId) {
@@ -84,6 +88,14 @@ public class Downloader {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	public void getMod(String modId, String url, String hash) {
+		final JsonArray tempArray = new JsonArray();
+		tempArray.add(new JsonObject());
+		final String newModId = modId.replace(".jar", "");
+		downloadMod(newModId, tempArray, jsonObject -> newModId + ".jar", jsonObject -> hash, jsonObject -> url, jsonObject -> {
+		});
 	}
 
 	public boolean hasUpdate() {
