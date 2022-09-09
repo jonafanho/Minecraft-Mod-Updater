@@ -20,7 +20,7 @@ jobs:
       - name: Make gradle wrapper executable
         run: chmod +x ./gradlew
       - name: Build ${{ matrix.minecraft }} ${{ matrix.loader }}
-        run: ./gradlew ${{ matrix.loader }}:build -PbuildVersion="${{ matrix.minecraft }}"
+        run: ./gradlew ${{ matrix.loader }}:build -PbuildVersion="${{ matrix.minecraft }}" -PcurseForgeApiKey="${{ secrets.CURSE_FORGE_API_KEY }}"
       - name: Capture release artifacts
         uses: actions/upload-artifact@v2
         with:

@@ -32,5 +32,6 @@ bin/
 
 run/
 latest.log
+Keys.java
 mappings
 .architectury-transformer/

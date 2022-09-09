@@ -38,7 +38,7 @@ public class Downloader {
 	public void getCurseForgeMod(String modId) {
 		try {
 			final URLConnection connection = new URL(String.format("https://api.curseforge.com/v1/mods/%s/files?gameVersion=%s&modLoaderType=%s", modId, minecraftVersion, modLoader.name)).openConnection();
-			connection.setRequestProperty("x-api-key", "key");
+			connection.setRequestProperty("x-api-key", Keys.CURSE_FORGE_KEY);
 			final JsonArray filesArray = new JsonParser().parse(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonArray("data");
 
 			downloadMod(

@@ -10,6 +10,7 @@ plugins {
 def default_minecraft_version = "1.16.5"
 def minecraft_version = rootProject.properties.containsKey("buildVersion") ? rootProject.getProperties().get("buildVersion") : default_minecraft_version
 def minecraft_main_version = minecraft_version.split("\\.")[1] as int
+def curse_forge_api_key = rootProject.properties.containsKey("curseForgeApiKey") ? rootProject.getProperties().get("curseForgeApiKey") : ""
 
 rootProject.ext.fabric_loader_version = new JsonSlurper().parse(("https://meta.fabricmc.net/v2/versions/loader/" + minecraft_version).toURL())[0]["loader"]["version"]
 rootProject.ext.forge_version = minecraft_version + "-" + new JsonSlurper().parse(("https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json").toURL())["promos"][minecraft_version + "-latest"]
@@ -50,6 +51,14 @@ task setupFiles() {
 		include "**/Text.java"
 		into "common/src/main/java/updater/mappings"
 		filter(ReplaceTokens, tokens: ["package": "updater.mappings"])
+	}
+
+	copy {
+		outputs.upToDateWhen { false }
+		from "common/src/main/KeysTemplate.java"
+		into "common/src/main/java/updater"
+		filter(ReplaceTokens, tokens: ["key": curse_forge_api_key])
+		rename "(.+)Template.java", "\$1.java"
 	}
 }
 
