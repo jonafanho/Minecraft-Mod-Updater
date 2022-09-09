@@ -9,7 +9,6 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -58,7 +57,7 @@ public class Downloader {
 					final int fileId = fileObject.get("id").getAsInt();
 					String fileNameEncoded = fileObject.get("fileName").getAsString();
 					try {
-						fileNameEncoded = URLEncoder.encode(fileNameEncoded, StandardCharsets.UTF_8);
+						fileNameEncoded = URLEncoder.encode(fileNameEncoded, "UTF-8");
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
