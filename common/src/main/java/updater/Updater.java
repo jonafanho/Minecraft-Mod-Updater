@@ -1,19 +1,17 @@
 package updater;
 
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
-import java.nio.charset.Charset;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class Updater {
 
@@ -54,17 +52,19 @@ public class Updater {
 		final Downloader downloader = new Downloader(minecraftVersion, modLoader, gameDirectory);
 
 		try {
-			final JsonObject configObject = new JsonParser().parse(FileUtils.readFileToString(configFile, Charset.defaultCharset())).getAsJsonObject();
+			final JsonObject configObject = new JsonParser().parse(FileUtils.readFileToString(configFile, StandardCharsets.UTF_8)).getAsJsonObject();
 
 			if (configObject.has("synced")) {
 				configObject.getAsJsonArray("synced").forEach(serverElement -> {
 					final String url = serverElement.getAsString();
 					System.out.println("Reading mods from " + url);
-					try (InputStream inputStream = new URL(url).openStream()) {
-						readConfig(new JsonParser().parse(new InputStreamReader(inputStream, StandardCharsets.UTF_8)).getAsJsonArray(), downloader);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
+					readConnectionSafeJson(url, jsonElement -> {
+						try {
+							readConfig(jsonElement.getAsJsonArray(), downloader);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					});
 				});
 			}
 
@@ -74,7 +74,7 @@ public class Updater {
 		} catch (Exception ignored) {
 			try {
 				System.out.println("Writing default config");
-				FileUtils.writeStringToFile(configFile, DEFAULT_CONFIG, Charset.defaultCharset());
+				FileUtils.writeStringToFile(configFile, DEFAULT_CONFIG, StandardCharsets.UTF_8);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -85,6 +85,34 @@ public class Updater {
 		} else {
 			System.out.println("No mod updates");
 		}
+	}
+
+	public static void readConnectionSafe(String url, Consumer<InputStream> callback, String... requestProperties) {
+		try {
+			final URLConnection urlConnection = new URL(url).openConnection();
+
+			for (int i = 0; i < requestProperties.length / 2; i++) {
+				urlConnection.setRequestProperty(requestProperties[2 * i], requestProperties[2 * i + 1]);
+			}
+
+			try (final InputStream inputStream = urlConnection.getInputStream()) {
+				callback.accept(inputStream);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void readConnectionSafeJson(String url, Consumer<JsonElement> callback, String... requestProperties) {
+		readConnectionSafe(url, inputStream -> {
+			try (final InputStreamReader inputStreamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
+				callback.accept(new JsonParser().parse(inputStreamReader));
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}, requestProperties);
 	}
 
 	private static void readConfig(JsonArray modArray, Downloader downloader) {

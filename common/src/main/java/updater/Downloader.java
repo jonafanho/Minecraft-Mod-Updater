@@ -2,18 +2,11 @@ package updater;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
+import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -40,60 +33,50 @@ public class Downloader {
 	}
 
 	public void getCurseForgeMod(String modId) {
-		try {
-			final URLConnection connection = new URL(String.format("https://api.curseforge.com/v1/mods/%s/files?gameVersion=%s&modLoaderType=%s", modId, minecraftVersion, modLoader.name)).openConnection();
-			connection.setRequestProperty("x-api-key", Keys.CURSE_FORGE_KEY);
-			final JsonArray filesArray = new JsonParser().parse(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonArray("data");
-
-			downloadMod(
-					modId,
-					filesArray,
-					fileObject -> fileObject.get("fileName").getAsString(),
-					fileObject -> fileObject.getAsJsonArray("hashes").get(0).getAsJsonObject().get("value").getAsString(),
-					fileObject -> {
-						final int fileId = fileObject.get("id").getAsInt();
-						return String.format("https://mediafiles.forgecdn.net/files/%s/%s/%s", fileId / 1000, fileId % 1000, fileObject.get("fileName").getAsString());
-					},
-					fileObject -> fileObject.getAsJsonArray("dependencies").forEach(dependency -> {
-						final JsonObject dependencyObject = dependency.getAsJsonObject();
-						if (dependencyObject.get("relationType").getAsInt() == 3) {
-							getCurseForgeMod(dependencyObject.get("modId").getAsString());
-						}
-					})
-			);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		Updater.readConnectionSafeJson(String.format("https://api.curseforge.com/v1/mods/%s/files?gameVersion=%s&modLoaderType=%s", modId, minecraftVersion, modLoader.name), jsonElement -> downloadMod(
+				modId,
+				jsonElement.getAsJsonObject().getAsJsonArray("data"),
+				fileObject -> fileObject.get("fileName").getAsString(),
+				fileObject -> fileObject.getAsJsonArray("hashes").get(0).getAsJsonObject().get("value").getAsString(),
+				fileObject -> {
+					final int fileId = fileObject.get("id").getAsInt();
+					String fileNameEncoded = fileObject.get("fileName").getAsString();
+					try {
+						fileNameEncoded = URLEncoder.encode(fileNameEncoded, "UTF-8");
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					return String.format("https://mediafiles.forgecdn.net/files/%s/%s/%s", fileId / 1000, fileId % 1000, fileNameEncoded);
+				},
+				fileObject -> fileObject.getAsJsonArray("dependencies").forEach(dependency -> {
+					final JsonObject dependencyObject = dependency.getAsJsonObject();
+					if (dependencyObject.get("relationType").getAsInt() == 3) {
+						getCurseForgeMod(dependencyObject.get("modId").getAsString());
+					}
+				})
+		), "x-api-key", Keys.CURSE_FORGE_KEY);
 	}
 
 	public void getModrinthMod(String modId) {
-		try {
-			final String url = String.format("https://api.modrinth.com/v2/project/%s/version?game_versions=%%5B%%22%s%%22%%5D&loaders=%%5B%%22%s%%22%%5D", modId, minecraftVersion, modLoader.name);
-			final URLConnection connection = new URL(url).openConnection();
-			final JsonArray filesArray = new JsonParser().parse(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8)).getAsJsonArray();
-
-			downloadMod(
-					modId,
-					filesArray,
-					fileObject -> fileObject.getAsJsonArray("files").get(0).getAsJsonObject().get("filename").getAsString(),
-					fileObject -> fileObject.getAsJsonArray("files").get(0).getAsJsonObject().getAsJsonObject("hashes").get("sha1").getAsString(),
-					fileObject -> fileObject.getAsJsonArray("files").get(0).getAsJsonObject().get("url").getAsString(),
-					fileObject -> fileObject.getAsJsonArray("dependencies").forEach(dependency -> {
-						final JsonObject dependencyObject = dependency.getAsJsonObject();
-						if (dependencyObject.get("dependency_type").getAsString().equals("required")) {
-							getModrinthMod(dependencyObject.get("project_id").getAsString());
-						}
-					})
-			);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		Updater.readConnectionSafeJson(String.format("https://api.modrinth.com/v2/project/%s/version?game_versions=%%5B%%22%s%%22%%5D&loaders=%%5B%%22%s%%22%%5D", modId, minecraftVersion, modLoader.name), jsonElement -> downloadMod(
+				modId,
+				jsonElement.getAsJsonArray(),
+				fileObject -> fileObject.getAsJsonArray("files").get(0).getAsJsonObject().get("filename").getAsString(),
+				fileObject -> fileObject.getAsJsonArray("files").get(0).getAsJsonObject().getAsJsonObject("hashes").get("sha1").getAsString(),
+				fileObject -> fileObject.getAsJsonArray("files").get(0).getAsJsonObject().get("url").getAsString(),
+				fileObject -> fileObject.getAsJsonArray("dependencies").forEach(dependency -> {
+					final JsonObject dependencyObject = dependency.getAsJsonObject();
+					if (dependencyObject.get("dependency_type").getAsString().equals("required")) {
+						getModrinthMod(dependencyObject.get("project_id").getAsString());
+					}
+				})
+		));
 	}
 
 	public void getMod(String modId, String url, String hash) {
 		final JsonArray tempArray = new JsonArray();
 		tempArray.add(new JsonObject());
-		final String newModId = modId.replace(".jar", "");
+		final String newModId = modId.replace(".jar", "").replaceAll("[^\\w-_]", "");
 		downloadMod(newModId, tempArray, jsonObject -> newModId + ".jar", jsonObject -> hash, jsonObject -> url, jsonObject -> {
 		});
 	}
@@ -123,22 +106,18 @@ public class Downloader {
 
 						if (download) {
 							for (int j = 0; j < 2; j++) {
-								try {
-									final HttpGet httpGet = new HttpGet(getUrl.apply(fileObject));
-									httpGet.addHeader("User-Agent", "Mozilla/5.0");
-									httpGet.addHeader("Referer", "https://www.google.com");
-									final CloseableHttpClient httpClient = HttpClients.createDefault();
-									FileUtils.copyInputStreamToFile(httpClient.execute(httpGet).getEntity().getContent(), modPath.toFile());
-									httpClient.close();
-									httpGet.releaseConnection();
-
-									if (hashMatch(getHash.apply(fileObject), modPath)) {
-										hasUpdate = true;
-										System.out.println("Downloaded " + modPath.getFileName() + (j > 0 ? " after " + (j + 1) + " tries" : ""));
-										break;
+								Updater.readConnectionSafe(getUrl.apply(fileObject), inputStream -> {
+									try {
+										FileUtils.copyInputStreamToFile(inputStream, modPath.toFile());
+									} catch (Exception e) {
+										e.printStackTrace();
 									}
-								} catch (Exception e) {
-									e.printStackTrace();
+								}, "User-Agent", "Mozilla/5.0");
+
+								if (hashMatch(getHash.apply(fileObject), modPath)) {
+									hasUpdate = true;
+									System.out.println("Downloaded " + modPath.getFileName() + (j > 0 ? " after " + (j + 1) + " tries" : ""));
+									break;
 								}
 							}
 						}
@@ -158,8 +137,13 @@ public class Downloader {
 		}
 	}
 
-	private static boolean hashMatch(String expectedHash, Path path) throws IOException {
-		return DigestUtils.sha1Hex(Files.newInputStream(path)).equals(expectedHash);
+	private static boolean hashMatch(String expectedHash, Path path) {
+		try (final InputStream inputStream = Files.newInputStream(path)) {
+			return DigestUtils.sha1Hex(inputStream).equals(expectedHash);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
 	}
 
 	@SuppressWarnings("all")
