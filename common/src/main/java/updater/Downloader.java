@@ -5,6 +5,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -13,6 +16,9 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class Downloader {
@@ -21,6 +27,7 @@ public class Downloader {
 	private final String minecraftVersion;
 	private final ModLoader modLoader;
 	private final Path modsPath;
+	private final Set<String> visitedMods = new HashSet<>();
 
 	public Downloader(String minecraftVersion, ModLoader modLoader, Path gameDirectory) {
 		this.minecraftVersion = minecraftVersion;
@@ -35,13 +42,20 @@ public class Downloader {
 			final JsonArray filesArray = new JsonParser().parse(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonArray("data");
 
 			downloadMod(
+					modId,
 					filesArray,
 					fileObject -> fileObject.get("fileName").getAsString(),
 					fileObject -> fileObject.getAsJsonArray("hashes").get(0).getAsJsonObject().get("value").getAsString(),
 					fileObject -> {
 						final int fileId = fileObject.get("id").getAsInt();
 						return String.format("https://mediafiles.forgecdn.net/files/%s/%s/%s", fileId / 1000, fileId % 1000, fileObject.get("fileName").getAsString());
-					}
+					},
+					fileObject -> fileObject.getAsJsonArray("dependencies").forEach(dependency -> {
+						final JsonObject dependencyObject = dependency.getAsJsonObject();
+						if (dependencyObject.get("relationType").getAsInt() == 3) {
+							getCurseForgeMod(dependencyObject.get("modId").getAsString());
+						}
+					})
 			);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -55,10 +69,17 @@ public class Downloader {
 			final JsonArray filesArray = new JsonParser().parse(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8)).getAsJsonArray();
 
 			downloadMod(
+					modId,
 					filesArray,
 					fileObject -> fileObject.getAsJsonArray("files").get(0).getAsJsonObject().get("filename").getAsString(),
 					fileObject -> fileObject.getAsJsonArray("files").get(0).getAsJsonObject().getAsJsonObject("hashes").get("sha1").getAsString(),
-					fileObject -> fileObject.getAsJsonArray("files").get(0).getAsJsonObject().get("url").getAsString()
+					fileObject -> fileObject.getAsJsonArray("files").get(0).getAsJsonObject().get("url").getAsString(),
+					fileObject -> fileObject.getAsJsonArray("dependencies").forEach(dependency -> {
+						final JsonObject dependencyObject = dependency.getAsJsonObject();
+						if (dependencyObject.get("dependency_type").getAsString().equals("required")) {
+							getModrinthMod(dependencyObject.get("project_id").getAsString());
+						}
+					})
 			);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -69,45 +90,58 @@ public class Downloader {
 		return hasUpdate;
 	}
 
-	private void downloadMod(JsonArray filesArray, Function<JsonObject, String> getName, Function<JsonObject, String> getHash, Function<JsonObject, String> getUrl) {
-		for (int i = 0; i < filesArray.size(); i++) {
-			try {
-				final JsonObject fileObject = filesArray.get(i).getAsJsonObject();
-				final String fileName = getName.apply(fileObject);
-				final Path modPath = modsPath.resolve(fileName);
+	private void downloadMod(String modId, JsonArray filesArray, Function<JsonObject, String> getName, Function<JsonObject, String> getHash, Function<JsonObject, String> getUrl, Consumer<JsonObject> firstCallback) {
+		if (!visitedMods.contains(modId)) {
+			visitedMods.add(modId);
 
-				if (i == 0) {
-					final boolean download;
+			for (int i = 0; i < filesArray.size(); i++) {
+				try {
+					final JsonObject fileObject = filesArray.get(i).getAsJsonObject();
+					final String fileName = getName.apply(fileObject);
+					final Path modPath = modsPath.resolve(fileName);
 
-					if (Files.exists(modPath)) {
-						download = !hashMatch(getHash.apply(fileObject), modPath);
-					} else {
-						download = true;
-					}
+					if (i == 0) {
+						final boolean download;
 
-					if (download) {
-						for (int j = 0; j < 2; j++) {
-							try {
-								FileUtils.copyURLToFile(new URL(getUrl.apply(fileObject)), modPath.toFile());
-								if (hashMatch(getHash.apply(fileObject), modPath)) {
-									hasUpdate = true;
-									System.out.println("Downloaded " + modPath.getFileName() + (j > 0 ? " after " + (j + 1) + " tries" : ""));
-									break;
+						if (Files.exists(modPath)) {
+							download = !hashMatch(getHash.apply(fileObject), modPath);
+						} else {
+							download = true;
+						}
+
+						if (download) {
+							for (int j = 0; j < 2; j++) {
+								try {
+									final HttpGet httpGet = new HttpGet(getUrl.apply(fileObject));
+									httpGet.addHeader("User-Agent", "Mozilla/5.0");
+									httpGet.addHeader("Referer", "https://www.google.com");
+									final CloseableHttpClient httpClient = HttpClients.createDefault();
+									FileUtils.copyInputStreamToFile(httpClient.execute(httpGet).getEntity().getContent(), modPath.toFile());
+									httpClient.close();
+									httpGet.releaseConnection();
+
+									if (hashMatch(getHash.apply(fileObject), modPath)) {
+										hasUpdate = true;
+										System.out.println("Downloaded " + modPath.getFileName() + (j > 0 ? " after " + (j + 1) + " tries" : ""));
+										break;
+									}
+								} catch (Exception e) {
+									e.printStackTrace();
 								}
-							} catch (Exception e) {
-								e.printStackTrace();
 							}
 						}
+
+						firstCallback.accept(fileObject);
+					} else {
+						if (Files.exists(modPath)) {
+							FileUtils.forceDeleteOnExit(modPath.toFile());
+							hasUpdate = true;
+							System.out.println("Deleting " + modPath.getFileName());
+						}
 					}
-				} else {
-					if (Files.exists(modPath)) {
-						FileUtils.forceDeleteOnExit(modPath.toFile());
-						hasUpdate = true;
-						System.out.println("Deleting " + modPath.getFileName());
-					}
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
-			} catch (Exception e) {
-				e.printStackTrace();
 			}
 		}
 	}
