@@ -80,7 +80,7 @@ public class Updater {
 			}
 		}
 
-		if (downloader.hasUpdate()) {
+		if (downloader.cleanAndCheckUpdate()) {
 			Launcher.launch(classPath, launchArguments);
 		} else {
 			System.out.println("No mod updates");

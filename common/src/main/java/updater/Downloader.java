@@ -5,8 +5,11 @@ import com.google.gson.JsonObject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -20,12 +23,25 @@ public class Downloader {
 	private final String minecraftVersion;
 	private final ModLoader modLoader;
 	private final Path modsPath;
+	private final Path modsPathTemp;
 	private final Set<String> visitedMods = new HashSet<>();
+	private final Set<File> modsToDelete = new HashSet<>();
+
+	private static final int DOWNLOAD_ATTEMPTS = 5;
+	private static final byte[] EMPTY_ZIP = {80, 75, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 	public Downloader(String minecraftVersion, ModLoader modLoader, Path gameDirectory) {
 		this.minecraftVersion = minecraftVersion;
 		this.modLoader = modLoader;
 		modsPath = gameDirectory.resolve("mods");
+		modsPathTemp = gameDirectory.resolve("mods-temp");
+
+		FileUtils.listFiles(modsPath.toFile(), new String[]{"jar"}, false).forEach(file -> {
+			if (!file.getName().startsWith("Mod-Updater-")) {
+				modsToDelete.add(file);
+			}
+		});
+
 		printCurseForgeKey();
 		visitedMods.add("minecraft-transit-railway");
 		visitedMods.add("XKPAmI6u");
@@ -42,7 +58,7 @@ public class Downloader {
 					final int fileId = fileObject.get("id").getAsInt();
 					String fileNameEncoded = fileObject.get("fileName").getAsString();
 					try {
-						fileNameEncoded = URLEncoder.encode(fileNameEncoded, "UTF-8");
+						fileNameEncoded = URLEncoder.encode(fileNameEncoded, StandardCharsets.UTF_8);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -81,67 +97,86 @@ public class Downloader {
 		});
 	}
 
-	public boolean hasUpdate() {
+	public boolean cleanAndCheckUpdate() {
+		if (!modsToDelete.isEmpty()) {
+			hasUpdate = true;
+		}
+
+		modsToDelete.forEach(file -> {
+			try {
+				System.out.println("Deleting " + file.getName());
+				specialCopy(null, file);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		});
+
 		return hasUpdate;
 	}
 
-	private void downloadMod(String modId, JsonArray filesArray, Function<JsonObject, String> getName, Function<JsonObject, String> getHash, Function<JsonObject, String> getUrl, Consumer<JsonObject> firstCallback) {
-		if (!visitedMods.contains(modId)) {
+	private void downloadMod(String modId, JsonArray filesArray, Function<JsonObject, String> getName, Function<JsonObject, String> getHash, Function<JsonObject, String> getUrl, Consumer<JsonObject> callback) {
+		if (!visitedMods.contains(modId) && filesArray.size() > 0) {
 			visitedMods.add(modId);
 
-			for (int i = 0; i < filesArray.size(); i++) {
-				try {
-					final JsonObject fileObject = filesArray.get(i).getAsJsonObject();
-					final String fileName = getName.apply(fileObject);
-					final Path modPath = modsPath.resolve(fileName);
+			try {
+				final JsonObject fileObject = filesArray.get(0).getAsJsonObject();
+				final String fileName = getName.apply(fileObject);
+				final Path modPathTemp = modsPathTemp.resolve(fileName);
 
-					if (i == 0) {
-						final boolean download;
-
-						if (Files.exists(modPath)) {
-							download = !hashMatch(getHash.apply(fileObject), modPath);
-						} else {
-							download = true;
-						}
-
-						if (download) {
-							for (int j = 0; j < 2; j++) {
-								Updater.readConnectionSafe(getUrl.apply(fileObject), inputStream -> {
-									try {
-										FileUtils.copyInputStreamToFile(inputStream, modPath.toFile());
-									} catch (Exception e) {
-										e.printStackTrace();
-									}
-								}, "User-Agent", "Mozilla/5.0");
-
-								if (hashMatch(getHash.apply(fileObject), modPath)) {
-									hasUpdate = true;
-									System.out.println("Downloaded " + modPath.getFileName() + (j > 0 ? " after " + (j + 1) + " tries" : ""));
-									break;
-								}
+				if (!hashMatch(getHash.apply(fileObject), modPathTemp)) {
+					for (int i = 0; i < DOWNLOAD_ATTEMPTS; i++) {
+						Updater.readConnectionSafe(getUrl.apply(fileObject), inputStream -> {
+							try {
+								FileUtils.copyInputStreamToFile(inputStream, modPathTemp.toFile());
+							} catch (Exception e) {
+								e.printStackTrace();
 							}
-						}
+						}, "User-Agent", "Mozilla/5.0");
 
-						firstCallback.accept(fileObject);
-					} else {
-						if (Files.exists(modPath)) {
-							FileUtils.forceDeleteOnExit(modPath.toFile());
-							hasUpdate = true;
-							System.out.println("Deleting " + modPath.getFileName());
+						if (hashMatch(getHash.apply(fileObject), modPathTemp)) {
+							System.out.println("Downloaded " + fileName + (i > 0 ? " after " + (i + 1) + " tries" : ""));
+							break;
 						}
 					}
-				} catch (Exception e) {
-					e.printStackTrace();
 				}
+
+				final Path modPath = modsPath.resolve(fileName);
+
+				if (!hashMatch(getHash.apply(fileObject), modPath)) {
+					hasUpdate = true;
+					specialCopy(modPathTemp, modPath.toFile());
+				}
+
+				modsToDelete.remove(modPath.toFile());
+				callback.accept(fileObject);
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
 		}
 	}
 
-	private static boolean hashMatch(String expectedHash, Path path) {
-		try (final InputStream inputStream = Files.newInputStream(path)) {
-			return DigestUtils.sha1Hex(inputStream).equals(expectedHash);
+	private static void specialCopy(Path source, File destination) {
+		try {
+			try (final InputStream inputStream = source == null ? new ByteArrayInputStream(EMPTY_ZIP) : Files.newInputStream(source)) {
+				FileUtils.copyInputStreamToFile(inputStream, destination);
+				if (source == null) {
+					FileUtils.forceDeleteOnExit(destination);
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
+		}
+	}
+
+	private static boolean hashMatch(String expectedHash, Path path) {
+		if (Files.exists(path)) {
+			try (final InputStream inputStream = Files.newInputStream(path)) {
+				return DigestUtils.sha1Hex(inputStream).equals(expectedHash);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 		return false;
 	}
