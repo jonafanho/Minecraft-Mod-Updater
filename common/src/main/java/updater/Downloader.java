@@ -1,6 +1,7 @@
 package updater;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -80,7 +81,10 @@ public class Downloader {
 				fileObject -> fileObject.getAsJsonArray("dependencies").forEach(dependency -> {
 					final JsonObject dependencyObject = dependency.getAsJsonObject();
 					if (dependencyObject.get("dependency_type").getAsString().equals("required")) {
-						getModrinthMod(dependencyObject.get("project_id").getAsString());
+						final JsonElement dependencyElement = dependencyObject.get("project_id");
+						if (!dependencyElement.isJsonNull()) {
+							getModrinthMod(dependencyElement.getAsString());
+						}
 					}
 				})
 		));

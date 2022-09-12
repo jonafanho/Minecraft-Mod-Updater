@@ -19,21 +19,11 @@ public class Updater {
 	private static final String DEFAULT_CONFIG;
 
 	static {
-		final JsonObject mtrObject = new JsonObject();
-		mtrObject.addProperty("id", "mtr");
-		mtrObject.addProperty("source", "latest");
-
-		final JsonObject luObject = new JsonObject();
-		luObject.addProperty("id", "london-underground-addon");
-		luObject.addProperty("source", "latest");
-
 		final JsonObject modMenuObject = new JsonObject();
 		modMenuObject.addProperty("id", "modmenu");
 		modMenuObject.addProperty("source", "modrinth");
 
 		final JsonArray localArray = new JsonArray();
-		localArray.add(mtrObject);
-		localArray.add(luObject);
 		localArray.add(modMenuObject);
 
 		final JsonObject configObject = new JsonObject();
