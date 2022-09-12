@@ -5,6 +5,7 @@
 ### Clientside
 
 1. Install the appropriate version of this mod to Minecraft. Currently, only Fabric versions are functional.
+1. The `<Minecraft root folder>/mods` folder will be cleared on each run. Place additional mod jar files in the `<Minecraft root folder>/mods-local` folder. Create the folder if it doesn't exist.
 1. Edit `<Minecraft root folder>/config/minecraft-mod-updater.json` or create it if it doesn't exist. An example is shown below:
    ```json
    {

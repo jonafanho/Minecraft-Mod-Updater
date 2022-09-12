@@ -22,8 +22,9 @@ public class Downloader {
 
 	private boolean hasUpdate = false;
 	private final String minecraftVersion;
-	private final ModLoader modLoader;
+	private final Updater.ModLoader modLoader;
 	private final Path modsPath;
+	private final Path modsPathLocal;
 	private final Path modsPathTemp;
 	private final Set<String> visitedMods = new HashSet<>();
 	private final Set<File> modsToDelete = new HashSet<>();
@@ -31,10 +32,11 @@ public class Downloader {
 	private static final int DOWNLOAD_ATTEMPTS = 5;
 	private static final byte[] EMPTY_ZIP = {80, 75, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-	public Downloader(String minecraftVersion, ModLoader modLoader, Path gameDirectory) {
+	public Downloader(String minecraftVersion, Updater.ModLoader modLoader, Path gameDirectory) {
 		this.minecraftVersion = minecraftVersion;
 		this.modLoader = modLoader;
 		modsPath = gameDirectory.resolve("mods");
+		modsPathLocal = gameDirectory.resolve("mods-local");
 		modsPathTemp = gameDirectory.resolve("mods-temp");
 
 		FileUtils.listFiles(modsPath.toFile(), new String[]{"jar"}, false).forEach(file -> {
@@ -42,6 +44,12 @@ public class Downloader {
 				modsToDelete.add(file);
 			}
 		});
+
+		try {
+			Files.createDirectories(modsPathLocal);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
 		printCurseForgeKey();
 	}
@@ -99,9 +107,20 @@ public class Downloader {
 	}
 
 	public boolean cleanAndCheckUpdate() {
-		if (!modsToDelete.isEmpty()) {
-			hasUpdate = true;
-		}
+		FileUtils.listFiles(modsPathLocal.toFile(), new String[]{"jar"}, false).forEach(file -> {
+			final Path modPath = modsPath.resolve(file.getName());
+			final File modFile = modPath.toFile();
+			final Path sourcePath = file.toPath();
+			final String sourceHash = getHash(sourcePath);
+
+			if (sourceHash != null && !sourceHash.equals(getHash(modPath))) {
+				specialCopy(sourcePath, modFile);
+				System.out.println("Copied " + modPath);
+				hasUpdate = true;
+			}
+
+			modsToDelete.remove(modFile);
+		});
 
 		modsToDelete.forEach(file -> {
 			try {
@@ -110,6 +129,7 @@ public class Downloader {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			hasUpdate = true;
 		});
 
 		return hasUpdate;
@@ -124,7 +144,7 @@ public class Downloader {
 				final String fileName = getName.apply(fileObject);
 				final Path modPathTemp = modsPathTemp.resolve(fileName);
 
-				if (!hashMatch(getHash.apply(fileObject), modPathTemp)) {
+				if (!getHash.apply(fileObject).equals(getHash(modPathTemp))) {
 					for (int i = 1; i <= DOWNLOAD_ATTEMPTS; i++) {
 						Updater.readConnectionSafe(getUrl.apply(fileObject), inputStream -> {
 							try {
@@ -134,7 +154,7 @@ public class Downloader {
 							}
 						}, "User-Agent", "Mozilla/5.0");
 
-						if (hashMatch(getHash.apply(fileObject), modPathTemp)) {
+						if (getHash.apply(fileObject).equals(getHash(modPathTemp))) {
 							System.out.println("Downloaded " + fileName);
 							break;
 						} else {
@@ -145,7 +165,7 @@ public class Downloader {
 
 				final Path modPath = modsPath.resolve(fileName);
 
-				if (!hashMatch(getHash.apply(fileObject), modPath)) {
+				if (!getHash.apply(fileObject).equals(getHash(modPath))) {
 					hasUpdate = true;
 					specialCopy(modPathTemp, modPath.toFile());
 				}
@@ -173,31 +193,21 @@ public class Downloader {
 		}
 	}
 
-	private static boolean hashMatch(String expectedHash, Path path) {
+	private static String getHash(Path path) {
 		if (Files.exists(path)) {
 			try (final InputStream inputStream = Files.newInputStream(path)) {
-				return DigestUtils.sha1Hex(inputStream).equals(expectedHash);
+				return DigestUtils.sha1Hex(inputStream);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
-		return false;
+		return null;
 	}
 
 	@SuppressWarnings("all")
 	private static void printCurseForgeKey() {
 		if (Keys.CURSE_FORGE_KEY.length() > 8) {
 			System.out.println("Using CurseForge API key: " + Keys.CURSE_FORGE_KEY.substring(0, 4) + "..." + Keys.CURSE_FORGE_KEY.substring(Keys.CURSE_FORGE_KEY.length() - 4));
-		}
-	}
-
-	public enum ModLoader {
-		FABRIC("fabric"), FORGE("forge");
-
-		private final String name;
-
-		ModLoader(String name) {
-			this.name = name;
 		}
 	}
 }

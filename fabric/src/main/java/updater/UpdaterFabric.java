@@ -9,6 +9,6 @@ public class UpdaterFabric implements PreLaunchEntrypoint {
 	@Override
 	public void onPreLaunch() {
 		final FabricLoaderImpl fabricLoader = FabricLoaderImpl.INSTANCE;
-		Updater.init(FabricLauncherBase.getLauncher().getClassPath(), fabricLoader.getLaunchArguments(false), fabricLoader.tryGetGameProvider().getRawGameVersion(), Downloader.ModLoader.FABRIC, fabricLoader.getGameDir());
+		Updater.init(FabricLauncherBase.getLauncher().getClassPath(), fabricLoader.getLaunchArguments(false), fabricLoader.tryGetGameProvider().getRawGameVersion(), Updater.ModLoader.FABRIC, fabricLoader.getGameDir());
 	}
 }

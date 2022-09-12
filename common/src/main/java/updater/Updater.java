@@ -37,7 +37,7 @@ public class Updater {
 
 	}
 
-	public static void init(List<Path> classPath, String[] launchArguments, String minecraftVersion, Downloader.ModLoader modLoader, Path gameDirectory) {
+	public static void init(List<Path> classPath, String[] launchArguments, String minecraftVersion, ModLoader modLoader, Path gameDirectory) {
 		final File configFile = gameDirectory.resolve("config").resolve("minecraft-mod-updater.json").toFile();
 		final Downloader downloader = new Downloader(minecraftVersion, modLoader, gameDirectory);
 
@@ -132,5 +132,15 @@ public class Updater {
 				e.printStackTrace();
 			}
 		});
+	}
+
+	public enum ModLoader {
+		FABRIC("fabric"), FORGE("forge");
+
+		public final String name;
+
+		ModLoader(String name) {
+			this.name = name;
+		}
 	}
 }
