@@ -1,6 +1,9 @@
 package updater;
 
 import com.google.gson.*;
+import com.jonafanho.apitools.ModId;
+import com.jonafanho.apitools.ModLoader;
+import com.jonafanho.apitools.ModProvider;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
@@ -114,16 +117,16 @@ public class Updater {
 				if (modObject.has("source")) {
 					final String source = modObject.get("source").getAsString().toLowerCase();
 					if (source.equals("curseforge")) {
-						downloader.getCurseForgeMod(modId);
+						downloader.downloadMod(new ModId(modId, ModProvider.CURSE_FORGE));
 					} else if (source.equals("modrinth")) {
-						downloader.getModrinthMod(modId);
+						downloader.downloadMod(new ModId(modId, ModProvider.MODRINTH));
 					} else {
 						System.out.println("Skipping mod " + modId + ", unknown source \"" + source + "\"");
 					}
 				} else if (modObject.has("url") && modObject.has("sha1")) {
 					final long millis = System.currentTimeMillis();
 					if ((!modObject.has("before") || millis < modObject.get("before").getAsLong()) && (!modObject.has("after") || millis >= modObject.get("after").getAsLong())) {
-						downloader.getMod(modId, modObject.get("url").getAsString(), modObject.get("sha1").getAsString());
+						downloader.downloadMod(modId, modObject.get("url").getAsString(), modObject.get("sha1").getAsString());
 					}
 				} else {
 					System.out.println("Skipping mod " + modId + ", either \"source\" or \"url\" and \"sha1\" must be defined");
@@ -132,15 +135,5 @@ public class Updater {
 				e.printStackTrace();
 			}
 		});
-	}
-
-	public enum ModLoader {
-		FABRIC("fabric"), FORGE("forge");
-
-		public final String name;
-
-		ModLoader(String name) {
-			this.name = name;
-		}
 	}
 }
