@@ -36,10 +36,10 @@ public class Config {
 				MOD_OBJECTS.addAll(getModObjects(configObject.getAsJsonArray("local")));
 			}
 
-			System.out.println("Successfully read config");
+			Updater.LOGGER.info("Successfully read config");
 		} catch (Exception ignored) {
 			try {
-				System.out.println("Resetting config");
+				Updater.LOGGER.info("Resetting config");
 				saveConfig(gameDirectory);
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -63,7 +63,7 @@ public class Config {
 
 		try {
 			FileUtils.writeStringToFile(getConfigFile(gameDirectory), new GsonBuilder().setPrettyPrinting().create().toJson(jsonObject), StandardCharsets.UTF_8);
-			System.out.println("Wrote config to file");
+			Updater.LOGGER.info("Wrote config to file");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

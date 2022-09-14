@@ -2,8 +2,10 @@ package updater;
 
 import org.apache.commons.io.FileUtils;
 
+import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -12,7 +14,22 @@ import java.util.stream.Collectors;
 
 public class Launcher {
 
-	public static void launch(List<Path> classPath, String[] launchArguments) {
+	public static void launch(List<Path> classPath, String[] launchArguments, Path gameDirectory) {
+		final File lastPidFile = gameDirectory.resolve(Updater.MODS_TEMP_DIRECTORY).resolve("pid.txt").toFile();
+		try {
+			final long lastPid = Long.parseLong(FileUtils.readFileToString(lastPidFile, StandardCharsets.UTF_8));
+			FileUtils.deleteQuietly(lastPidFile);
+			final String jvmName = ManagementFactory.getRuntimeMXBean().getName();
+			final long thisPid = Long.parseLong(jvmName.substring(0, jvmName.indexOf('@')));
+			if (lastPid == thisPid) {
+				Updater.LOGGER.info("Skipping Minecraft relaunch");
+				return;
+			} else {
+				Updater.LOGGER.info("Running Minecraft with process ID " + thisPid);
+			}
+		} catch (Exception ignored) {
+		}
+
 		String className = null;
 		for (final StackTraceElement stackTraceElement : Thread.currentThread().getStackTrace()) {
 			if (stackTraceElement.getMethodName().equals("main")) {
@@ -41,9 +58,10 @@ public class Launcher {
 					Arrays.stream(launchArguments).map(Launcher::checkForSpace).collect(Collectors.joining(" "))
 			)).replace(formatPath(oldLibraryPath.toString()), formatPath(newLibraryPath.toString()));
 
-			System.out.println(command);
 			try {
-				Runtime.getRuntime().exec(command);
+				final long pid = Runtime.getRuntime().exec(command).pid();
+				FileUtils.writeStringToFile(lastPidFile, String.valueOf(pid), StandardCharsets.UTF_8);
+				Updater.LOGGER.info("Restarting Minecraft with process ID " + pid);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

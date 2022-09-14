@@ -76,7 +76,7 @@ public class Downloader {
 
 			if (sourceHash != null && !sourceHash.equals(getHash(modPath))) {
 				specialCopy(sourcePath, modFile);
-				System.out.println("Copied " + modPath);
+				Updater.LOGGER.info("Copied " + modPath);
 				hasUpdate = true;
 			}
 
@@ -85,7 +85,7 @@ public class Downloader {
 
 		modsToDelete.forEach(file -> {
 			try {
-				System.out.println("Deleting " + file.getName());
+				Updater.LOGGER.info("Deleting " + file.getName());
 				specialCopy(null, file);
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -111,10 +111,10 @@ public class Downloader {
 					}, "User-Agent", "Mozilla/5.0");
 
 					if (sha1.equals(getHash(modPathTemp))) {
-						System.out.println("Downloaded " + fileName);
+						Updater.LOGGER.info("Downloaded " + fileName);
 						break;
 					} else {
-						System.out.println("Failed to download " + fileName + " (" + i + "/" + DOWNLOAD_ATTEMPTS + ")");
+						Updater.LOGGER.warn("Failed to download " + fileName + " (" + i + "/" + DOWNLOAD_ATTEMPTS + ")");
 					}
 				}
 			}
@@ -161,7 +161,7 @@ public class Downloader {
 	@SuppressWarnings("all")
 	private static void printCurseForgeKey() {
 		if (Keys.CURSE_FORGE_KEY.length() > 8) {
-			System.out.println("Using CurseForge API key: " + Keys.CURSE_FORGE_KEY.substring(0, 4) + "..." + Keys.CURSE_FORGE_KEY.substring(Keys.CURSE_FORGE_KEY.length() - 4));
+			Updater.LOGGER.info("Using CurseForge API key: " + Keys.CURSE_FORGE_KEY.substring(0, 4) + "..." + Keys.CURSE_FORGE_KEY.substring(Keys.CURSE_FORGE_KEY.length() - 4));
 		}
 	}
 }
