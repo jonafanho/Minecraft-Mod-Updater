@@ -2,10 +2,9 @@ package updater;
 
 import org.apache.commons.io.FileUtils;
 
-import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -15,19 +14,15 @@ import java.util.stream.Collectors;
 public class Launcher {
 
 	public static void launch(List<Path> classPath, String[] launchArguments, Path gameDirectory) {
-		final File lastPidFile = gameDirectory.resolve(Updater.MODS_TEMP_DIRECTORY).resolve("pid.txt").toFile();
-		try {
-			final long lastPid = Long.parseLong(FileUtils.readFileToString(lastPidFile, StandardCharsets.UTF_8));
-			FileUtils.deleteQuietly(lastPidFile);
-			final String jvmName = ManagementFactory.getRuntimeMXBean().getName();
-			final long thisPid = Long.parseLong(jvmName.substring(0, jvmName.indexOf('@')));
-			if (lastPid == thisPid) {
-				Updater.LOGGER.info("Skipping Minecraft relaunch");
-				return;
-			} else {
-				Updater.LOGGER.info("Running Minecraft with process ID " + thisPid);
+		final Path tempFile = gameDirectory.resolve(Updater.MODS_TEMP_DIRECTORY).resolve("temp.txt");
+		if (Files.exists(tempFile)) {
+			Updater.LOGGER.info("Skipping Minecraft relaunch");
+			try {
+				Files.deleteIfExists(tempFile);
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-		} catch (Exception ignored) {
+			return;
 		}
 
 		String className = null;
@@ -59,9 +54,11 @@ public class Launcher {
 			)).replace(formatPath(oldLibraryPath.toString()), formatPath(newLibraryPath.toString()));
 
 			try {
-				final long pid = Runtime.getRuntime().exec(command).pid();
-				FileUtils.writeStringToFile(lastPidFile, String.valueOf(pid), StandardCharsets.UTF_8);
-				Updater.LOGGER.info("Restarting Minecraft with process ID " + pid);
+				Runtime.getRuntime().exec(command);
+				if (!Files.exists(tempFile)) {
+					Files.createFile(tempFile);
+				}
+				Updater.LOGGER.info("Restarting Minecraft with command:\n" + command);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
