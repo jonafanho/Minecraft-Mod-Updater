@@ -1,9 +1,6 @@
 package updater;
 
-import com.jonafanho.apitools.ModFile;
-import com.jonafanho.apitools.ModId;
-import com.jonafanho.apitools.ModLoader;
-import com.jonafanho.apitools.NetworkUtils;
+import com.jonafanho.apitools.*;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 
@@ -33,9 +30,9 @@ public class Downloader {
 	public Downloader(String minecraftVersion, ModLoader modLoader, Path gameDirectory) {
 		this.minecraftVersion = minecraftVersion;
 		this.modLoader = modLoader;
-		modsPath = gameDirectory.resolve("mods");
-		modsPathLocal = gameDirectory.resolve("mods-local");
-		modsPathTemp = gameDirectory.resolve("mods-temp");
+		modsPath = gameDirectory.resolve(Updater.MODS_DIRECTORY);
+		modsPathLocal = gameDirectory.resolve(Updater.MODS_LOCAL_DIRECTORY);
+		modsPathTemp = gameDirectory.resolve(Updater.MODS_TEMP_DIRECTORY);
 
 		FileUtils.listFiles(modsPath.toFile(), new String[]{"jar"}, false).forEach(file -> {
 			if (!file.getName().startsWith("Mod-Updater-")) {
@@ -50,9 +47,13 @@ public class Downloader {
 		}
 
 		printCurseForgeKey();
+
+		if (modLoader == ModLoader.FABRIC) {
+			downloadMod(new ModId("modmenu", ModProvider.MODRINTH));
+		}
 	}
 
-	public void downloadMod(String modId, String url, String hash) {
+	public void downloadMod(String modId, String hash, String url) {
 		downloadFile(modId.replace(".jar", "").replaceAll("[^\\w-_.]", "") + ".jar", hash, url);
 	}
 

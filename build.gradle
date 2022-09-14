@@ -58,6 +58,7 @@ task setupFiles() {
 		from(zipTree("common/src/main/java/updater/mappings/mappings.zip")) { eachFile { file -> file.relativePath = new RelativePath(true, file.relativePath.segments.drop(1) as String[]) } }
 		include "**/ScreenMapper.java"
 		include "**/Text.java"
+		include "**/UtilitiesClient.java"
 		into "common/src/main/java/updater/mappings"
 		filter(ReplaceTokens, tokens: ["package": "updater.mappings"])
 	}
