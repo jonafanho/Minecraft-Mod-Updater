@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.jonafanho.apitools.Mod;
 import com.jonafanho.apitools.ModId;
 import com.jonafanho.apitools.ModProvider;
 import org.apache.commons.io.FileUtils;
@@ -14,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public class Config {
@@ -76,18 +78,19 @@ public class Config {
 			try {
 				final JsonObject modObject = modElement.getAsJsonObject();
 				final String modId = modObject.get("id").getAsString();
+				final String[] comments = modObject.has("comment") ? modObject.get("comment").getAsString().split("\\|") : new String[0];
 
 				if (modObject.has("source")) {
 					final String source = modObject.get("source").getAsString().toLowerCase();
 					if (source.equals("curseforge")) {
-						modObjects.add(new ModObject(modId, ModProvider.CURSE_FORGE));
+						modObjects.add(new ModObject(modId, ModProvider.CURSE_FORGE, comments));
 					} else if (source.equals("modrinth")) {
-						modObjects.add(new ModObject(modId, ModProvider.MODRINTH));
+						modObjects.add(new ModObject(modId, ModProvider.MODRINTH, comments));
 					}
 				} else if (modObject.has("url") && modObject.has("sha1")) {
 					final Long before = modObject.has("before") ? modObject.get("before").getAsLong() : null;
 					final Long after = modObject.has("after") ? modObject.get("after").getAsLong() : null;
-					modObjects.add(new ModObject(modId, modObject.get("url").getAsString(), modObject.get("sha1").getAsString(), before, after));
+					modObjects.add(new ModObject(modId, modObject.get("url").getAsString(), modObject.get("sha1").getAsString(), before, after, comments));
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -103,6 +106,20 @@ public class Config {
 
 	public static void forEachModObject(Consumer<ModObject> consumer) {
 		MOD_OBJECTS.forEach(consumer);
+	}
+
+	public static void addModObject(Mod mod) {
+		final Set<ModId> modIds = mod.modIds;
+		for (final ModObject modObject : MOD_OBJECTS) {
+			for (final ModId modId : modIds) {
+				if (modId.modId.equals(modObject.modId) && modId.modProvider.equals(modObject.modProvider)) {
+					return;
+				}
+			}
+		}
+
+		modIds.stream().findFirst().ifPresent(modId -> MOD_OBJECTS.add(new ModObject(modId.modId, modId.modProvider, mod.name, mod.description)));
+		Collections.sort(MOD_OBJECTS);
 	}
 
 	public static void removeServerUrl(int index) {
@@ -125,23 +142,26 @@ public class Config {
 		private final String sha1;
 		private final long before;
 		private final long after;
+		private final String[] comments;
 
-		private ModObject(String modId, ModProvider modProvider) {
+		private ModObject(String modId, ModProvider modProvider, String... comments) {
 			this.modId = modId;
 			this.modProvider = modProvider;
 			url = null;
 			sha1 = null;
 			before = Long.MAX_VALUE;
 			after = 0;
+			this.comments = comments;
 		}
 
-		private ModObject(String modId, String url, String sha1, Long before, Long after) {
+		private ModObject(String modId, String url, String sha1, Long before, Long after, String... comments) {
 			this.modId = modId;
 			modProvider = null;
 			this.url = url;
 			this.sha1 = sha1;
 			this.before = before == null ? Long.MAX_VALUE : before;
 			this.after = after == null ? 0 : after;
+			this.comments = comments;
 		}
 
 		public void download(Downloader downloader) {
@@ -156,7 +176,10 @@ public class Config {
 		}
 
 		public String[] toStringArray() {
-			return new String[]{modId, modProvider == null ? url : modProvider.name};
+			final String[] result = new String[comments.length + 1];
+			System.arraycopy(comments, 0, result, 0, comments.length);
+			result[comments.length] = modProvider == null ? url : modProvider.name;
+			return result;
 		}
 
 		private JsonObject toJsonObject() {
@@ -174,6 +197,10 @@ public class Config {
 				if (after != 0) {
 					jsonObject.addProperty("after", after);
 				}
+			}
+
+			if (comments.length > 0) {
+				jsonObject.addProperty("comment", String.join("|", comments));
 			}
 
 			return jsonObject;

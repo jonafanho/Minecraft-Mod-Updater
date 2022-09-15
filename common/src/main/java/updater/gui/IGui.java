@@ -10,6 +10,7 @@ public interface IGui {
 	int TEXT_PADDING = 6;
 	int TEXT_FIELD_PADDING = 4;
 	int ARGB_WHITE = 0xFFFFFFFF;
+	int ARGB_BLACK = 0xFF000000;
 
 	static void setPositionAndWidth(AbstractWidget widget, int x, int y, int widgetWidth) {
 		widget.x = x;

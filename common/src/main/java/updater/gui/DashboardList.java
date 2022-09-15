@@ -5,6 +5,8 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import net.minecraft.util.Mth;
 import updater.mappings.Text;
 
@@ -38,8 +40,8 @@ public class DashboardList implements IGui {
 	}
 
 	public void init(Consumer<AbstractWidget> addDrawableChild) {
-		IGui.setPositionAndWidth(buttonPrevPage, x, y + TEXT_FIELD_PADDING / 2, SQUARE_SIZE);
-		IGui.setPositionAndWidth(buttonNextPage, x + SQUARE_SIZE * 3, y + TEXT_FIELD_PADDING / 2, SQUARE_SIZE);
+		IGui.setPositionAndWidth(buttonPrevPage, x, y, SQUARE_SIZE);
+		IGui.setPositionAndWidth(buttonNextPage, x + SQUARE_SIZE * 3, y, SQUARE_SIZE);
 
 		buttonAction.visible = false;
 
@@ -61,23 +63,33 @@ public class DashboardList implements IGui {
 		this.dataList = dataList;
 	}
 
+	public void renderBackground(PoseStack matrices) {
+		Gui.fill(matrices, x, y, x + width, y + height, ARGB_BLACK);
+		final int itemsToShow = itemsToShow();
+		for (int i = 0; i < itemsToShow; i++) {
+			if (i + itemsToShow * page < dataList.size()) {
+				Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * i, x + width, y + SQUARE_SIZE + itemHeight * i + 1, 0xFF222222);
+				Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * (i + 1) - 1, x + width, y + SQUARE_SIZE + itemHeight * (i + 1), 0xFF111111);
+			}
+		}
+	}
+
 	public void render(PoseStack matrices, Font textRenderer) {
-		Gui.drawCenteredString(matrices, textRenderer, String.format("%s/%s", page + 1, totalPages), x + SQUARE_SIZE * 2, y + TEXT_PADDING + TEXT_FIELD_PADDING / 2, ARGB_WHITE);
+		Gui.drawCenteredString(matrices, textRenderer, String.format("%s/%s", page + 1, totalPages), x + SQUARE_SIZE * 2, y + TEXT_PADDING, ARGB_WHITE);
 		final int itemsToShow = itemsToShow();
 		for (int i = 0; i < itemsToShow; i++) {
 			if (i + itemsToShow * page < dataList.size()) {
 				final Data data = dataList.get(i + itemsToShow * page);
 				for (int j = 0; j < data.text.length; j++) {
-					final String drawString = data.text[j];
-					final int textStart = TEXT_PADDING * 2;
-					final int textWidth = textRenderer.width(drawString);
-					final int availableSpace = width - textStart;
+					final Component component = Text.literal(data.text[j]).withStyle(Style.EMPTY.withBold(data.text.length > 1 && j == 0));
+					final int textWidth = textRenderer.width(component);
+					final int availableSpace = width - TEXT_PADDING * 2;
 					matrices.pushPose();
-					matrices.translate(x + textStart, 0, 0);
+					matrices.translate(x + TEXT_PADDING, 0, 0);
 					if (textWidth > availableSpace) {
 						matrices.scale((float) availableSpace / textWidth, 1, 1);
 					}
-					textRenderer.draw(matrices, drawString, 0, y + SQUARE_SIZE + itemHeight * i + TEXT_PADDING + j * (TEXT_HEIGHT + TEXT_PADDING), ARGB_WHITE);
+					textRenderer.drawShadow(matrices, component, 0, y + SQUARE_SIZE + itemHeight * i + TEXT_PADDING + j * (TEXT_HEIGHT + TEXT_PADDING), ARGB_WHITE);
 					matrices.popPose();
 				}
 			}
@@ -106,8 +118,8 @@ public class DashboardList implements IGui {
 
 	private void setPage(int newPage) {
 		page = Mth.clamp(newPage, 0, totalPages - 1);
-		buttonPrevPage.visible = page > 0;
-		buttonNextPage.visible = page < totalPages - 1;
+		buttonPrevPage.active = page > 0;
+		buttonNextPage.active = page < totalPages - 1;
 	}
 
 	private void onClick(BiConsumer<Data, Integer> onClick) {

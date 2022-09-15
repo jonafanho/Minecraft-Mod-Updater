@@ -1,7 +1,9 @@
 package updater.gui;
 
+import com.jonafanho.apitools.ModLoader;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.Util;
+import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.components.Button;
 import updater.Config;
 import updater.Updater;
@@ -21,10 +23,13 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 	private final Button buttonOpenFolder;
 	private final Button buttonBrowseMods;
 	private final Button buttonDiscardChanges;
+	private final Button buttonAddServerPackFromLink;
+	private final Button buttonAddModFromLink;
+	private final Button buttonRelaunchMinecraft;
 	private final DashboardList serverList;
 	private final DashboardList localList;
 
-	public ConfigScreen(Path gameDirectory) {
+	public ConfigScreen(String minecraftVersion, ModLoader modLoader, Path gameDirectory) {
 		super(Text.literal(""));
 		this.gameDirectory = gameDirectory;
 		Config.loadConfig(gameDirectory);
@@ -32,12 +37,18 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 		buttonOpenFolder = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("modmenu.modsFolder"), button -> Util.getPlatform().openFile(gameDirectory.resolve(Updater.MODS_LOCAL_DIRECTORY).toFile()));
 		buttonBrowseMods = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.browse_mods"), button -> {
 			if (minecraft != null) {
-				UtilitiesClient.setScreen(minecraft, new SearchModsScreen(this));
+				UtilitiesClient.setScreen(minecraft, new SearchModsScreen(minecraftVersion, modLoader, this));
 			}
 		});
 		buttonDiscardChanges = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.discard_changes"), button -> {
 			Config.loadConfig(gameDirectory);
 			updateListData(false);
+		});
+		buttonAddServerPackFromLink = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.add_server_pack_from_link"), button -> {
+		});
+		buttonAddModFromLink = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.add_mod_from_link"), button -> {
+		});
+		buttonRelaunchMinecraft = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.relaunch_minecraft"), button -> {
 		});
 
 		serverList = new DashboardList((data, index) -> {
@@ -47,35 +58,41 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 		localList = new DashboardList((data, index) -> {
 			Config.removeModObject(index);
 			updateListData(true);
-		}, "-", 2);
+		}, "-", 3);
 	}
 
 	@Override
 	protected void init() {
 		super.init();
 
-		final int smallColumnWidth = (width - SQUARE_SIZE * 4) / 3;
+		final int smallColumnWidth = (width - SQUARE_SIZE * 2) / 3;
 
-		IGui.setPositionAndWidth(buttonOpenFolder, SQUARE_SIZE, height - SQUARE_SIZE * 2, smallColumnWidth);
-		IGui.setPositionAndWidth(buttonBrowseMods, SQUARE_SIZE * 2 + smallColumnWidth, height - SQUARE_SIZE * 2, smallColumnWidth);
-		IGui.setPositionAndWidth(buttonDiscardChanges, SQUARE_SIZE * 3 + smallColumnWidth * 2, height - SQUARE_SIZE * 2, smallColumnWidth);
+		IGui.setPositionAndWidth(buttonOpenFolder, SQUARE_SIZE, height - SQUARE_SIZE * 3, smallColumnWidth);
+		IGui.setPositionAndWidth(buttonBrowseMods, SQUARE_SIZE + smallColumnWidth, height - SQUARE_SIZE * 3, smallColumnWidth);
+		IGui.setPositionAndWidth(buttonDiscardChanges, SQUARE_SIZE + smallColumnWidth * 2, height - SQUARE_SIZE * 3, smallColumnWidth);
+		IGui.setPositionAndWidth(buttonAddServerPackFromLink, SQUARE_SIZE, height - SQUARE_SIZE * 2, smallColumnWidth);
+		IGui.setPositionAndWidth(buttonAddModFromLink, SQUARE_SIZE + smallColumnWidth, height - SQUARE_SIZE * 2, smallColumnWidth);
+		IGui.setPositionAndWidth(buttonRelaunchMinecraft, SQUARE_SIZE + smallColumnWidth * 2, height - SQUARE_SIZE * 2, smallColumnWidth);
 
 		final int columnWidth = (width - SQUARE_SIZE * 3) / 2;
 		final int column2Start = SQUARE_SIZE * 2 + columnWidth;
 
 		serverList.x = SQUARE_SIZE;
-		serverList.y = SQUARE_SIZE;
+		serverList.y = SQUARE_SIZE + TEXT_HEIGHT + TEXT_PADDING;
 		serverList.width = columnWidth;
-		serverList.height = height - SQUARE_SIZE * 4;
+		serverList.height = height - SQUARE_SIZE * 5 - TEXT_HEIGHT - TEXT_PADDING;
 		localList.x = column2Start;
-		localList.y = SQUARE_SIZE;
+		localList.y = SQUARE_SIZE + TEXT_HEIGHT + TEXT_PADDING;
 		localList.width = columnWidth;
-		localList.height = height - SQUARE_SIZE * 4;
+		localList.height = height - SQUARE_SIZE * 5 - TEXT_HEIGHT - TEXT_PADDING;
 
 		updateListData(hasChanges);
 		addDrawableChild(buttonOpenFolder);
 		addDrawableChild(buttonBrowseMods);
 		addDrawableChild(buttonDiscardChanges);
+		addDrawableChild(buttonAddServerPackFromLink);
+		addDrawableChild(buttonAddModFromLink);
+		addDrawableChild(buttonRelaunchMinecraft);
 		serverList.init(this::addDrawableChild);
 		localList.init(this::addDrawableChild);
 	}
@@ -84,9 +101,13 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 	public void render(PoseStack matrices, int mouseX, int mouseY, float delta) {
 		try {
 			renderBackground(matrices);
+			serverList.renderBackground(matrices);
+			localList.renderBackground(matrices);
 			super.render(matrices, mouseX, mouseY, delta);
 			serverList.render(matrices, font);
 			localList.render(matrices, font);
+			Gui.drawCenteredString(matrices, font, Text.translatable("gui.updater.synced_packs"), (width - SQUARE_SIZE) / 4 + SQUARE_SIZE / 2, SQUARE_SIZE, ARGB_WHITE);
+			Gui.drawCenteredString(matrices, font, Text.translatable("gui.updater.local_mods"), (width - SQUARE_SIZE) / 4 + width / 2, SQUARE_SIZE, ARGB_WHITE);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -117,7 +138,7 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 		return super.mouseScrolled(mouseX, mouseY, amount);
 	}
 
-	private void updateListData(boolean hasChanges) {
+	public void updateListData(boolean hasChanges) {
 		final List<DashboardList.Data> serverUrlList = new ArrayList<>();
 		Config.forEachServerUrl(serverUrl -> serverUrlList.add(new DashboardList.Data(serverUrl)));
 		serverList.setData(serverUrlList);

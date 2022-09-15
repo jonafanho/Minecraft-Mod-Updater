@@ -1,4 +1,11 @@
 {
+	"gui.updater.add_mod_from_link": "Add Mod From URL",
+	"gui.updater.add_server_pack_from_link": "Add Modpack From URL",
 	"gui.updater.browse_mods": "Browse for Mods",
-	"gui.updater.discard_changes": "Discard Changes"
+	"gui.updater.discard_changes": "Discard Changes",
+	"gui.updater.local_mods": "Local Mods",
+	"gui.updater.mod_details": "Downloads: %s   Updated: %s",
+	"gui.updater.relaunch_minecraft": "Relaunch Minecraft",
+	"gui.updater.search": "Search",
+	"gui.updater.synced_packs": "Synced Modpacks"
 }
