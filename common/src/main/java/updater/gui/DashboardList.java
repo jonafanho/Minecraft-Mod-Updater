@@ -26,19 +26,23 @@ public class DashboardList implements IGui {
 	private final Button buttonNextPage;
 
 	private final Button buttonAction;
+	private final Button buttonMore;
 
 	private List<Data> dataList = new ArrayList<>();
 	private int hoverIndex, page, totalPages;
 
 	private final int expectedLines;
 	private final int itemHeight;
+	private final boolean hasMoreButton;
 
-	public DashboardList(BiConsumer<Data, Integer> onClick, String buttonText, int expectedLines) {
+	public DashboardList(BiConsumer<Data, Integer> onClick, BiConsumer<Data, Integer> onClickMore, String buttonText, int expectedLines) {
 		buttonPrevPage = new Button(0, 0, 0, SQUARE_SIZE, Text.literal("<"), button -> setPage(page - 1));
 		buttonNextPage = new Button(0, 0, 0, SQUARE_SIZE, Text.literal(">"), button -> setPage(page + 1));
 		buttonAction = new Button(0, 0, 0, SQUARE_SIZE, Text.literal(buttonText), button -> onClick(onClick));
+		buttonMore = new Button(0, 0, 0, SQUARE_SIZE, Text.literal("..."), button -> onClick(onClickMore));
 		this.expectedLines = expectedLines;
 		itemHeight = TEXT_PADDING + (TEXT_HEIGHT + TEXT_PADDING) * expectedLines;
+		hasMoreButton = onClickMore != null;
 	}
 
 	public void init(Consumer<AbstractWidget> addDrawableChild) {
@@ -46,10 +50,12 @@ public class DashboardList implements IGui {
 		IGui.setPositionAndWidth(buttonNextPage, x + SQUARE_SIZE * 3, y, SQUARE_SIZE);
 
 		buttonAction.visible = false;
+		buttonMore.visible = false;
 
 		addDrawableChild.accept(buttonPrevPage);
 		addDrawableChild.accept(buttonNextPage);
 		addDrawableChild.accept(buttonAction);
+		addDrawableChild.accept(buttonMore);
 	}
 
 	public void tick() {
@@ -65,18 +71,8 @@ public class DashboardList implements IGui {
 		this.dataList = dataList;
 	}
 
-	public void renderBackground(PoseStack matrices) {
-		Gui.fill(matrices, x, y, x + width, y + height, ARGB_BLACK);
-		final int itemsToShow = itemsToShow();
-		for (int i = 0; i < itemsToShow; i++) {
-			if (i + itemsToShow * page < dataList.size()) {
-				Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * i, x + width, y + SQUARE_SIZE + itemHeight * i + 1, 0xFF222222);
-				Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * (i + 1) - 1, x + width, y + SQUARE_SIZE + itemHeight * (i + 1), 0xFF111111);
-			}
-		}
-	}
-
 	public void render(PoseStack matrices, Font textRenderer) {
+		Gui.fill(matrices, x, y, x + width, y + height, ARGB_BLACK);
 		Gui.drawCenteredString(matrices, textRenderer, String.format("%s/%s", page + 1, totalPages), x + SQUARE_SIZE * 2, y + TEXT_PADDING, ARGB_WHITE);
 		final int itemsToShow = itemsToShow();
 		for (int i = 0; i < itemsToShow; i++) {
@@ -93,6 +89,8 @@ public class DashboardList implements IGui {
 					}
 					textRenderer.drawShadow(matrices, component, 0, y + SQUARE_SIZE + itemHeight * i + TEXT_PADDING + j * (TEXT_HEIGHT + TEXT_PADDING), ARGB_WHITE);
 					matrices.popPose();
+					Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * i, x + width, y + SQUARE_SIZE + itemHeight * i + 1, 0xFF222222);
+					Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * (i + 1) - 1, x + width, y + SQUARE_SIZE + itemHeight * (i + 1), 0xFF111111);
 				}
 			}
 		}
@@ -100,6 +98,7 @@ public class DashboardList implements IGui {
 
 	public void mouseMoved(double mouseX, double mouseY) {
 		buttonAction.visible = false;
+		buttonMore.visible = false;
 
 		if (mouseX >= x && mouseX < x + width && mouseY >= y + SQUARE_SIZE && mouseY < y + SQUARE_SIZE + itemHeight * itemsToShow()) {
 			hoverIndex = ((int) mouseY - y - SQUARE_SIZE) / itemHeight;
@@ -107,7 +106,9 @@ public class DashboardList implements IGui {
 			final int itemsToShow = itemsToShow();
 			if (hoverIndex >= 0 && hoverIndex + page * itemsToShow < dataSize) {
 				buttonAction.visible = true;
+				buttonMore.visible = hasMoreButton;
 				IGui.setPositionAndWidth(buttonAction, x + width - SQUARE_SIZE, y + hoverIndex * itemHeight + SQUARE_SIZE, SQUARE_SIZE);
+				IGui.setPositionAndWidth(buttonMore, x + width - SQUARE_SIZE * 2, y + hoverIndex * itemHeight + SQUARE_SIZE, SQUARE_SIZE);
 			}
 		}
 	}
@@ -126,7 +127,7 @@ public class DashboardList implements IGui {
 
 	private void onClick(BiConsumer<Data, Integer> onClick) {
 		final int index = hoverIndex + itemsToShow() * page;
-		if (index >= 0 && index < dataList.size()) {
+		if (onClick != null && index >= 0 && index < dataList.size()) {
 			onClick.accept(dataList.get(index), index);
 		}
 	}

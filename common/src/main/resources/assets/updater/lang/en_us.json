@@ -8,6 +8,7 @@
 	"gui.updater.invalid_modpack_url": "Invalid Modpack URL!",
 	"gui.updater.local_mods": "Local Mods",
 	"gui.updater.mod_details": "Downloads: %s   Updated: %s",
+	"gui.updater.no_results": "No results found for \"%s\"",
 	"gui.updater.relaunch_minecraft": "Relaunch Minecraft",
 	"gui.updater.search": "Search",
 	"gui.updater.synced_packs": "Synced Modpacks"

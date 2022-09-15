@@ -93,11 +93,11 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 		serverList = new DashboardList((data, index) -> {
 			Config.removeServerUrl(index);
 			updateListData(true);
-		}, "-", 1);
+		}, null, "-", 1);
 		localList = new DashboardList((data, index) -> {
 			Config.removeModObject(index);
 			updateListData(true);
-		}, "-", 3);
+		}, null, "-", 3);
 	}
 
 	@Override
@@ -140,11 +140,9 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 	public void render(PoseStack matrices, int mouseX, int mouseY, float delta) {
 		try {
 			renderBackground(matrices);
-			serverList.renderBackground(matrices);
-			localList.renderBackground(matrices);
-			super.render(matrices, mouseX, mouseY, delta);
 			serverList.render(matrices, font);
 			localList.render(matrices, font);
+			super.render(matrices, mouseX, mouseY, delta);
 			Gui.drawCenteredString(matrices, font, Text.translatable("gui.updater.synced_packs"), (width - SQUARE_SIZE) / 4 + SQUARE_SIZE / 2, SQUARE_SIZE, ARGB_WHITE);
 			Gui.drawCenteredString(matrices, font, Text.translatable("gui.updater.local_mods"), (width - SQUARE_SIZE) / 4 + width / 2, SQUARE_SIZE, ARGB_WHITE);
 		} catch (Exception e) {
