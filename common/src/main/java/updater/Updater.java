@@ -6,7 +6,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Path;
-import java.util.List;
 
 public class Updater {
 
@@ -20,7 +19,7 @@ public class Updater {
 
 	}
 
-	public static void init(List<Path> classPath, String[] launchArguments, String minecraftVersion, ModLoader modLoader, Path gameDirectory) {
+	public static void init(Runnable launch, String minecraftVersion, ModLoader modLoader, Path gameDirectory) {
 		final Downloader downloader = new Downloader(minecraftVersion, modLoader, gameDirectory);
 		Config.loadConfig(gameDirectory);
 		Config.forEachServerUrl(serverUrl -> {
@@ -36,7 +35,7 @@ public class Updater {
 		Config.forEachModObject(modObject -> modObject.download(downloader));
 
 		if (downloader.cleanAndCheckUpdate()) {
-			Launcher.launch(classPath, launchArguments, gameDirectory);
+			launch.run();
 		} else {
 			LOGGER.info("No mod updates");
 		}

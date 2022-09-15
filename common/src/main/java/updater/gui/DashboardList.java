@@ -30,12 +30,14 @@ public class DashboardList implements IGui {
 	private List<Data> dataList = new ArrayList<>();
 	private int hoverIndex, page, totalPages;
 
+	private final int expectedLines;
 	private final int itemHeight;
 
 	public DashboardList(BiConsumer<Data, Integer> onClick, String buttonText, int expectedLines) {
 		buttonPrevPage = new Button(0, 0, 0, SQUARE_SIZE, Text.literal("<"), button -> setPage(page - 1));
 		buttonNextPage = new Button(0, 0, 0, SQUARE_SIZE, Text.literal(">"), button -> setPage(page + 1));
 		buttonAction = new Button(0, 0, 0, SQUARE_SIZE, Text.literal(buttonText), button -> onClick(onClick));
+		this.expectedLines = expectedLines;
 		itemHeight = TEXT_PADDING + (TEXT_HEIGHT + TEXT_PADDING) * expectedLines;
 	}
 
@@ -80,7 +82,7 @@ public class DashboardList implements IGui {
 		for (int i = 0; i < itemsToShow; i++) {
 			if (i + itemsToShow * page < dataList.size()) {
 				final Data data = dataList.get(i + itemsToShow * page);
-				for (int j = 0; j < data.text.length; j++) {
+				for (int j = 0; j < Math.min(data.text.length, expectedLines); j++) {
 					final Component component = Text.literal(data.text[j]).withStyle(Style.EMPTY.withBold(data.text.length > 1 && j == 0));
 					final int textWidth = textRenderer.width(component);
 					final int availableSpace = width - TEXT_PADDING * 2;

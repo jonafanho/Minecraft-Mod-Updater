@@ -7,6 +7,8 @@ import com.google.gson.JsonParser;
 import com.jonafanho.apitools.Mod;
 import com.jonafanho.apitools.ModId;
 import com.jonafanho.apitools.ModProvider;
+import com.jonafanho.apitools.NetworkUtils;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
@@ -108,6 +110,13 @@ public class Config {
 		MOD_OBJECTS.forEach(consumer);
 	}
 
+	public static void addServerUrl(String url) {
+		if (!url.isEmpty() && !SERVER_URLS.contains(url)) {
+			SERVER_URLS.add(url);
+		}
+		Collections.sort(SERVER_URLS);
+	}
+
 	public static void addModObject(Mod mod) {
 		final Set<ModId> modIds = mod.modIds;
 		for (final ModObject modObject : MOD_OBJECTS) {
@@ -120,6 +129,26 @@ public class Config {
 
 		modIds.stream().findFirst().ifPresent(modId -> MOD_OBJECTS.add(new ModObject(modId.modId, modId.modProvider, mod.name, mod.description)));
 		Collections.sort(MOD_OBJECTS);
+	}
+
+	public static void addModObject(String url) {
+		for (final ModObject modObject : MOD_OBJECTS) {
+			if (url.equals(modObject.url)) {
+				return;
+			}
+		}
+
+		if (!url.isEmpty()) {
+			final String[] urlSplit = url.split("/");
+			NetworkUtils.openConnectionSafe(url, inputStream -> {
+				try {
+					MOD_OBJECTS.add(new ModObject(Downloader.cleanModName(urlSplit[urlSplit.length - 1]), url, DigestUtils.sha1Hex(inputStream), null, null));
+					Collections.sort(MOD_OBJECTS);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}, "User-Agent", "Mozilla/5.0");
+		}
 	}
 
 	public static void removeServerUrl(int index) {
@@ -176,10 +205,13 @@ public class Config {
 		}
 
 		public String[] toStringArray() {
-			final String[] result = new String[comments.length + 1];
-			System.arraycopy(comments, 0, result, 0, comments.length);
-			result[comments.length] = modProvider == null ? url : modProvider.name;
-			return result;
+			final List<String> result = new ArrayList<>();
+			Collections.addAll(result, comments);
+			if (comments.length == 0) {
+				result.add(modId);
+			}
+			result.add(modProvider == null ? url : modProvider.name);
+			return result.toArray(new String[0]);
 		}
 
 		private JsonObject toJsonObject() {

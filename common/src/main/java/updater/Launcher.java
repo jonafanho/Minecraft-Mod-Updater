@@ -13,16 +13,18 @@ import java.util.stream.Collectors;
 
 public class Launcher {
 
-	public static void launch(List<Path> classPath, String[] launchArguments, Path gameDirectory) {
+	public static void launch(List<Path> classPath, String[] launchArguments, Path gameDirectory, boolean avoidBootLoop) {
 		final Path tempFile = gameDirectory.resolve(Updater.MODS_TEMP_DIRECTORY).resolve("temp.txt");
 		if (Files.exists(tempFile)) {
-			Updater.LOGGER.info("Skipping Minecraft relaunch");
 			try {
 				Files.deleteIfExists(tempFile);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			return;
+			if (avoidBootLoop) {
+				Updater.LOGGER.info("Skipping Minecraft relaunch");
+				return;
+			}
 		}
 
 		String className = null;

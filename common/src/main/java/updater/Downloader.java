@@ -54,7 +54,7 @@ public class Downloader {
 	}
 
 	public void downloadMod(String modId, String hash, String url) {
-		downloadFile(modId.replace(".jar", "").replaceAll("[^\\w-_.]", "") + ".jar", hash, url);
+		downloadFile(cleanModName(modId) + ".jar", hash, url);
 	}
 
 	public void downloadMod(ModId modId) {
@@ -130,6 +130,10 @@ public class Downloader {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	public static String cleanModName(String name) {
+		return name.replace(".jar", "").replaceAll("[^\\w-_.]", "");
 	}
 
 	private static void specialCopy(Path source, File destination) {
