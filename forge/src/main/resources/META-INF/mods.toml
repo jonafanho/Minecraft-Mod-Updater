@@ -1,6 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "[36,)"
 license = "MIT"
+logoFile = "icon.png"
 
 [[mods]]
 modId = "updater"

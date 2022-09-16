@@ -12,6 +12,7 @@
 		"sources": "https://github.com/jonafanho/Minecraft-Mod-Updater"
 	},
 	"license": "MIT",
+	"icon": "icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"preLaunch": [
