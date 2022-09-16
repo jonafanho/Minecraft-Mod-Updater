@@ -11,6 +11,6 @@ public class ModMenuConfig implements ModMenuApi {
 	@Override
 	public ConfigScreenFactory<?> getModConfigScreenFactory() {
 		final FabricLoaderImpl fabricLoader = FabricLoaderImpl.INSTANCE;
-		return parent -> new ConfigScreen(UpdaterFabric.getLaunch(false), fabricLoader.tryGetGameProvider().getRawGameVersion(), ModLoader.FABRIC, fabricLoader.getGameDir());
+		return parent -> new ConfigScreen(UpdaterFabric.getLaunch(), fabricLoader.tryGetGameProvider().getRawGameVersion(), ModLoader.FABRIC, fabricLoader.getGameDir());
 	}
 }

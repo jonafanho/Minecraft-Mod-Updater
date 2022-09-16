@@ -1,10 +1,10 @@
 package updater;
 
+import com.jonafanho.apitools.ModLoader;
 import org.apache.commons.io.FileUtils;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -13,24 +13,11 @@ import java.util.stream.Collectors;
 
 public class Launcher {
 
-	public static void launch(List<Path> classPath, String[] launchArguments, Path gameDirectory, boolean avoidBootLoop) {
-		final Path tempFile = gameDirectory.resolve(Updater.MODS_TEMP_DIRECTORY).resolve("temp.txt");
-		if (Files.exists(tempFile)) {
-			try {
-				Files.deleteIfExists(tempFile);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			if (avoidBootLoop) {
-				Updater.LOGGER.info("Skipping Minecraft relaunch");
-				return;
-			}
-		}
-
+	public static void launch(List<Path> classPath, String[] launchArguments) {
 		String className = null;
 		for (final StackTraceElement stackTraceElement : Thread.currentThread().getStackTrace()) {
-			if (stackTraceElement.getMethodName().equals("main")) {
-				className = stackTraceElement.getClassName();
+			className = stackTraceElement.getClassName();
+			if (stackTraceElement.getMethodName().equals("main") && className.contains(ModLoader.FABRIC.name)) {
 				break;
 			}
 		}
@@ -57,9 +44,6 @@ public class Launcher {
 
 			try {
 				Runtime.getRuntime().exec(command);
-				if (!Files.exists(tempFile)) {
-					Files.createFile(tempFile);
-				}
 				Updater.LOGGER.info("Restarting Minecraft with command:\n" + command);
 			} catch (Exception e) {
 				e.printStackTrace();

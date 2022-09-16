@@ -5,6 +5,7 @@ import com.jonafanho.apitools.NetworkUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class Updater {
@@ -34,8 +35,25 @@ public class Updater {
 		});
 		Config.forEachModObject(modObject -> modObject.download(downloader));
 
+		final Path tempFile = gameDirectory.resolve(MODS_TEMP_DIRECTORY).resolve("temp.txt");
+		final boolean skipLaunch = Files.exists(tempFile);
+		try {
+			Files.deleteIfExists(tempFile);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
 		if (downloader.cleanAndCheckUpdate()) {
-			launch.run();
+			if (skipLaunch) {
+				LOGGER.info("Skipping Minecraft relaunch");
+			} else {
+				try {
+					Files.createFile(tempFile);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				launch.run();
+			}
 		} else {
 			LOGGER.info("No mod updates");
 		}
