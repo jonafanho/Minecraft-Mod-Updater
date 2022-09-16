@@ -28,6 +28,8 @@ public class SearchModsScreen extends ScreenMapper implements IGui {
 	private final DashboardList modsList;
 	private final List<Mod> modsData = new ArrayList<>();
 
+	private static final String FEATURED = "jonafanho";
+
 	public SearchModsScreen(String minecraftVersion, ModLoader modLoader, ConfigScreen configScreen) {
 		super(Text.literal(""));
 		this.configScreen = configScreen;
@@ -51,6 +53,7 @@ public class SearchModsScreen extends ScreenMapper implements IGui {
 			final String query = textFieldSearch.getValue();
 			modsData.clear();
 			modsData.addAll(Mod.searchMods(query, minecraftVersion, modLoader, Keys.CURSE_FORGE_KEY));
+			modsData.sort((a, b) -> a.authors.contains(FEATURED) ? -1 : b.authors.contains(FEATURED) ? 1 : a.compareTo(b));
 			modsList.setData(modsData.stream().map(mod -> new DashboardList.Data(mod.name, mod.description, Text.translatable("gui.updater.mod_details", mod.downloads, mod.dateModified).getString())).collect(Collectors.toList()));
 			updatePositions();
 			message = Text.translatable("gui.updater.no_results", query);

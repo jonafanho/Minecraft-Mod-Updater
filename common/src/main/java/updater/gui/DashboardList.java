@@ -79,16 +79,8 @@ public class DashboardList implements IGui {
 			if (i + itemsToShow * page < dataList.size()) {
 				final Data data = dataList.get(i + itemsToShow * page);
 				for (int j = 0; j < Math.min(data.text.length, expectedLines); j++) {
-					final Component component = Text.literal(data.text[j]).withStyle(Style.EMPTY.withBold(data.text.length > 1 && j == 0));
-					final int textWidth = textRenderer.width(component);
-					final int availableSpace = width - TEXT_PADDING * 2;
-					matrices.pushPose();
-					matrices.translate(x + TEXT_PADDING, 0, 0);
-					if (textWidth > availableSpace) {
-						matrices.scale((float) availableSpace / textWidth, 1, 1);
-					}
-					textRenderer.drawShadow(matrices, component, 0, y + SQUARE_SIZE + itemHeight * i + TEXT_PADDING + j * (TEXT_HEIGHT + TEXT_PADDING), ARGB_WHITE);
-					matrices.popPose();
+					final Component component = trimText(data.text[j], Style.EMPTY.withBold(data.text.length > 1 && j == 0), width - TEXT_PADDING * 2, textRenderer);
+					textRenderer.drawShadow(matrices, component, x + TEXT_PADDING, y + SQUARE_SIZE + itemHeight * i + TEXT_PADDING + j * (TEXT_HEIGHT + TEXT_PADDING), ARGB_WHITE);
 					Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * i, x + width, y + SQUARE_SIZE + itemHeight * i + 1, 0xFF222222);
 					Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * (i + 1) - 1, x + width, y + SQUARE_SIZE + itemHeight * (i + 1), 0xFF111111);
 				}
@@ -134,6 +126,21 @@ public class DashboardList implements IGui {
 
 	private int itemsToShow() {
 		return (height - SQUARE_SIZE) / itemHeight;
+	}
+
+	private static Component trimText(String text, Style style, int availableSpace, Font textRenderer) {
+		boolean addDots = false;
+		Component component;
+		while (true) {
+			component = Text.literal(text + (addDots ? "..." : "")).withStyle(style);
+			final int textWidth = textRenderer.width(component);
+			if (!text.isEmpty() && textWidth > availableSpace) {
+				text = text.substring(0, text.length() - 1);
+			} else {
+				return component;
+			}
+			addDots = true;
+		}
 	}
 
 	public static class Data implements Comparable<Data> {
