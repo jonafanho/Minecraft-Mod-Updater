@@ -13,7 +13,12 @@ import java.util.stream.Collectors;
 
 public class Launcher {
 
-	public static void launch(List<Path> classPath, String[] launchArguments) {
+	public static void launch(List<Path> classPath, String[] launchArguments, boolean isServer) {
+		if (isServer) {
+			Updater.LOGGER.info("Please restart the server to apply mod updates!");
+			System.exit(0);
+		}
+
 		String className = null;
 		for (final StackTraceElement stackTraceElement : Thread.currentThread().getStackTrace()) {
 			className = stackTraceElement.getClassName();
