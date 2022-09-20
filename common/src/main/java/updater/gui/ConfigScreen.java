@@ -8,13 +8,16 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.components.Button;
 import updater.Config;
+import updater.Downloader;
 import updater.Keys;
 import updater.Updater;
 import updater.mappings.ScreenMapper;
 import updater.mappings.Text;
 import updater.mappings.UtilitiesClient;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +26,7 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 	private boolean hasChanges = false;
 
 	private final Path gameDirectory;
+	private final Path modsLocal;
 	private final Button buttonOpenFolder;
 	private final Button buttonBrowseMods;
 	private final Button buttonDiscardChanges;
@@ -35,9 +39,10 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 	public ConfigScreen(Runnable launch, String minecraftVersion, ModLoader modLoader, Path gameDirectory) {
 		super(Text.literal(""));
 		this.gameDirectory = gameDirectory;
+		modsLocal = gameDirectory.resolve(Updater.MODS_LOCAL_DIRECTORY);
 		Config.loadConfig(gameDirectory);
 
-		buttonOpenFolder = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("modmenu.modsFolder"), button -> Util.getPlatform().openFile(gameDirectory.resolve(Updater.MODS_LOCAL_DIRECTORY).toFile()));
+		buttonOpenFolder = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("modmenu.modsFolder"), button -> Util.getPlatform().openFile(modsLocal.toFile()));
 		buttonBrowseMods = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.browse_mods"), button -> {
 			if (minecraft != null) {
 				UtilitiesClient.setScreen(minecraft, new SearchModsScreen(minecraftVersion, modLoader, this));
@@ -95,8 +100,18 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 			updateListData(true);
 		}, null, "-", 1);
 		localList = new DashboardList((data, index) -> {
-			Config.removeModObject(index);
-			updateListData(true);
+			if (Config.removeModObject(index)) {
+				updateListData(true);
+			} else {
+				data.firstText(fileName -> {
+					try {
+						Files.move(modsLocal.resolve(fileName), gameDirectory.resolve(Updater.MODS_BACKUP_DIRECTORY).resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				});
+				updateListData(hasChanges);
+			}
 		}, null, "-", 3);
 	}
 
@@ -182,6 +197,7 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 
 		final List<DashboardList.Data> modObjectsList = new ArrayList<>();
 		Config.forEachModObject(modObject -> modObjectsList.add(new DashboardList.Data(modObject.toStringArray())));
+		Downloader.iterateFiles(modsLocal.toFile(), false, file -> modObjectsList.add(new DashboardList.Data(file.getName(), Text.translatable("gui.updater.local_folder").getString())));
 		localList.setData(modObjectsList);
 
 		this.hasChanges = hasChanges;

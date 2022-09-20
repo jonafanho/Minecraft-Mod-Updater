@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class Downloader {
 
@@ -21,6 +22,7 @@ public class Downloader {
 	private final Path modsPath;
 	private final Path modsPathLocal;
 	private final Path modsPathTemp;
+	private final Path modsPathBackup;
 	private final Set<String> visitedMods = new HashSet<>();
 	private final Set<File> modsToDelete = new HashSet<>();
 
@@ -33,12 +35,8 @@ public class Downloader {
 		modsPath = gameDirectory.resolve(Updater.MODS_DIRECTORY);
 		modsPathLocal = gameDirectory.resolve(Updater.MODS_LOCAL_DIRECTORY);
 		modsPathTemp = gameDirectory.resolve(Updater.MODS_TEMP_DIRECTORY);
-
-		FileUtils.listFiles(modsPath.toFile(), new String[]{"jar"}, false).forEach(file -> {
-			if (!file.getName().startsWith("Mod-Updater-")) {
-				modsToDelete.add(file);
-			}
-		});
+		modsPathBackup = gameDirectory.resolve(Updater.MODS_BACKUP_DIRECTORY);
+		iterateFiles(modsPath.toFile(), false, modsToDelete::add);
 
 		try {
 			Files.createDirectories(modsPathLocal);
@@ -68,7 +66,7 @@ public class Downloader {
 	}
 
 	public boolean cleanAndCheckUpdate() {
-		FileUtils.listFiles(modsPathLocal.toFile(), new String[]{"jar"}, false).forEach(file -> {
+		iterateFiles(modsPathLocal.toFile(), true, file -> {
 			final Path modPath = modsPath.resolve(file.getName());
 			final File modFile = modPath.toFile();
 			final Path sourcePath = file.toPath();
@@ -86,6 +84,10 @@ public class Downloader {
 		modsToDelete.forEach(file -> {
 			try {
 				Updater.LOGGER.info("Deleting " + file.getName());
+				final Path backupPath = modsPathBackup.resolve(file.getName());
+				if (!Files.exists(backupPath)) {
+					specialCopy(file.toPath(), backupPath.toFile());
+				}
 				specialCopy(null, file);
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -134,6 +136,14 @@ public class Downloader {
 
 	public static String cleanModName(String name) {
 		return name.replace(".jar", "").replaceAll("[^\\w-_.]", "");
+	}
+
+	public static void iterateFiles(File fileFolder, boolean includeModUpdater, Consumer<File> callback) {
+		FileUtils.listFiles(fileFolder, new String[]{"jar"}, false).forEach(file -> {
+			if (includeModUpdater || !file.getName().startsWith("Mod-Updater-")) {
+				callback.accept(file);
+			}
+		});
 	}
 
 	private static void specialCopy(Path source, File destination) {

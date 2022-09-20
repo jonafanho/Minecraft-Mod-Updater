@@ -151,6 +151,12 @@ public class DashboardList implements IGui {
 			this.text = text;
 		}
 
+		public void firstText(Consumer<String> callback) {
+			if (text.length > 0) {
+				callback.accept(text[0]);
+			}
+		}
+
 		@Override
 		public int compareTo(Data data) {
 			return String.join(" ", text).compareTo(String.join(" ", data.text));

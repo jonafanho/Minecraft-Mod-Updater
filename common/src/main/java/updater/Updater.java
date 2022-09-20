@@ -14,6 +14,7 @@ public class Updater {
 	public static final String MODS_DIRECTORY = "mods";
 	public static final String MODS_LOCAL_DIRECTORY = "mods-local";
 	public static final String MODS_TEMP_DIRECTORY = "mods-temp";
+	public static final String MODS_BACKUP_DIRECTORY = "mods-backup";
 	public static final Logger LOGGER = LogManager.getLogger("Minecraft Mod Updater");
 
 	public static void init() {

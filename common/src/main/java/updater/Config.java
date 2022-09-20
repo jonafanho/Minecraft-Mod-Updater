@@ -155,8 +155,13 @@ public class Config {
 		SERVER_URLS.remove(index);
 	}
 
-	public static void removeModObject(int index) {
-		MOD_OBJECTS.remove(index);
+	public static boolean removeModObject(int index) {
+		if (index >= MOD_OBJECTS.size()) {
+			return false;
+		} else {
+			MOD_OBJECTS.remove(index);
+			return true;
+		}
 	}
 
 	private static File getConfigFile(Path gameDirectory) {

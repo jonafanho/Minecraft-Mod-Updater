@@ -6,6 +6,7 @@
 	"gui.updater.discard_changes": "Discard Changes",
 	"gui.updater.examples": "Examples:",
 	"gui.updater.invalid_modpack_url": "Invalid Modpack URL!",
+	"gui.updater.local_folder": "Local Folder",
 	"gui.updater.local_mods": "Local Mods",
 	"gui.updater.mod_details": "Downloads: %s   Updated: %s",
 	"gui.updater.no_results": "No results found for \"%s\"",
