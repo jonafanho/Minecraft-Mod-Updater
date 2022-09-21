@@ -190,7 +190,7 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 		return super.mouseScrolled(mouseX, mouseY, amount);
 	}
 
-	public void updateListData(boolean hasChanges) {
+	private void updateListData(boolean hasChanges) {
 		final List<DashboardList.Data> serverUrlList = new ArrayList<>();
 		Config.forEachServerUrl(serverUrl -> serverUrlList.add(new DashboardList.Data(serverUrl)));
 		serverList.setData(serverUrlList);

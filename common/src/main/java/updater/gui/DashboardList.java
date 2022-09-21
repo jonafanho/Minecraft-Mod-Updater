@@ -81,9 +81,9 @@ public class DashboardList implements IGui {
 				for (int j = 0; j < Math.min(data.text.length, expectedLines); j++) {
 					final Component component = trimText(data.text[j], Style.EMPTY.withBold(data.text.length > 1 && j == 0), width - TEXT_PADDING * 2, textRenderer);
 					textRenderer.drawShadow(matrices, component, x + TEXT_PADDING, y + SQUARE_SIZE + itemHeight * i + TEXT_PADDING + j * (TEXT_HEIGHT + TEXT_PADDING), ARGB_WHITE);
-					Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * i, x + width, y + SQUARE_SIZE + itemHeight * i + 1, 0xFF222222);
-					Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * (i + 1) - 1, x + width, y + SQUARE_SIZE + itemHeight * (i + 1), 0xFF111111);
 				}
+				Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * i, x + width, y + SQUARE_SIZE + itemHeight * i + 1, 0xFF222222);
+				Gui.fill(matrices, x, y + SQUARE_SIZE + itemHeight * (i + 1) - 1, x + width, y + SQUARE_SIZE + itemHeight * (i + 1), 0xFF111111);
 			}
 		}
 	}

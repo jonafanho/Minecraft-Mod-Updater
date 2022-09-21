@@ -37,7 +37,6 @@ public class SearchModsScreen extends ScreenMapper implements IGui {
 		textFieldSearch = new EditBox(Minecraft.getInstance().font, 0, 0, 0, SQUARE_SIZE, Text.literal(""));
 		modsList = new DashboardList((data, index) -> {
 			Config.addModObject(modsData.get(index));
-			configScreen.updateListData(true);
 			onClose();
 		}, (data, index) -> modsData.get(index).modIds.forEach(modId -> {
 			switch (modId.modProvider) {

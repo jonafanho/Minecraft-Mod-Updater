@@ -7,11 +7,14 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class Launcher {
+
+	private static final List<Runnable> CALLBACKS = new ArrayList<>();
 
 	public static void launch(List<Path> classPath, String[] launchArguments, boolean isServer) {
 		if (isServer) {
@@ -53,8 +56,13 @@ public class Launcher {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			CALLBACKS.forEach(Runnable::run);
 			System.exit(0);
 		}
+	}
+
+	public static void addCallback(Runnable callback) {
+		CALLBACKS.add(callback);
 	}
 
 	private static String checkForSpaceAfterEquals(String argument) {

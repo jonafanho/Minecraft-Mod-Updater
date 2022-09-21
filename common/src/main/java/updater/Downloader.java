@@ -36,7 +36,7 @@ public class Downloader {
 		modsPathLocal = gameDirectory.resolve(Updater.MODS_LOCAL_DIRECTORY);
 		modsPathTemp = gameDirectory.resolve(Updater.MODS_TEMP_DIRECTORY);
 		modsPathBackup = gameDirectory.resolve(Updater.MODS_BACKUP_DIRECTORY);
-		iterateFiles(modsPath.toFile(), false, modsToDelete::add);
+		iterateFiles(modsPath.toFile(), true, modsToDelete::add);
 
 		try {
 			Files.createDirectories(modsPathLocal);
@@ -46,6 +46,7 @@ public class Downloader {
 
 		printCurseForgeKey();
 
+		downloadMod(new ModId("minecraft-mod-updater", ModProvider.MODRINTH));
 		if (modLoader == ModLoader.FABRIC) {
 			downloadMod(new ModId("modmenu", ModProvider.MODRINTH));
 		}
@@ -66,7 +67,7 @@ public class Downloader {
 	}
 
 	public boolean cleanAndCheckUpdate() {
-		iterateFiles(modsPathLocal.toFile(), true, file -> {
+		iterateFiles(modsPathLocal.toFile(), false, file -> {
 			final Path modPath = modsPath.resolve(file.getName());
 			final File modFile = modPath.toFile();
 			final Path sourcePath = file.toPath();
@@ -88,7 +89,11 @@ public class Downloader {
 				if (!Files.exists(backupPath)) {
 					specialCopy(file.toPath(), backupPath.toFile());
 				}
-				specialCopy(null, file);
+				if (isModUpdater(file)) {
+					Launcher.addCallback(() -> specialCopy(null, file));
+				} else {
+					specialCopy(null, file);
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -122,13 +127,18 @@ public class Downloader {
 			}
 
 			final Path modPath = modsPath.resolve(fileName);
+			final File modFile = modPath.toFile();
 
 			if (!sha1.equals(getHash(modPath))) {
 				hasUpdate = true;
-				specialCopy(modPathTemp, modPath.toFile());
+				if (isModUpdater(modFile) && Files.exists(modPath)) {
+					Launcher.addCallback(() -> specialCopy(modPathTemp, modFile));
+				} else {
+					specialCopy(modPathTemp, modFile);
+				}
 			}
 
-			modsToDelete.remove(modPath.toFile());
+			modsToDelete.remove(modFile);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -140,7 +150,7 @@ public class Downloader {
 
 	public static void iterateFiles(File fileFolder, boolean includeModUpdater, Consumer<File> callback) {
 		FileUtils.listFiles(fileFolder, new String[]{"jar"}, false).forEach(file -> {
-			if (includeModUpdater || !file.getName().startsWith("Mod-Updater-")) {
+			if (includeModUpdater || !isModUpdater(file)) {
 				callback.accept(file);
 			}
 		});
@@ -170,6 +180,10 @@ public class Downloader {
 			}
 		}
 		return null;
+	}
+
+	private static boolean isModUpdater(File file) {
+		return file.getName().startsWith("Mod-Updater-");
 	}
 
 	@SuppressWarnings("all")
