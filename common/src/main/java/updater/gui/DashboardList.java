@@ -148,7 +148,10 @@ public class DashboardList implements IGui {
 		private final String[] text;
 
 		public Data(String... text) {
-			this.text = text;
+			this.text = new String[text.length];
+			for (int i = 0; i < text.length; i++) {
+				this.text[i] = text[i].trim();
+			}
 		}
 
 		public void firstText(Consumer<String> callback) {

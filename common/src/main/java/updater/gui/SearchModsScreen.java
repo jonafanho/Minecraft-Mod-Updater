@@ -28,7 +28,7 @@ public class SearchModsScreen extends AddFromLinkScreen {
 
 		modsList = new DashboardList((data, index) -> {
 			Config.addModObject(modsData.get(index));
-			onClose();
+			setData();
 		}, (data, index) -> modsData.get(index).modIds.forEach(modId -> {
 			switch (modId.modProvider) {
 				case CURSE_FORGE:
@@ -86,8 +86,7 @@ public class SearchModsScreen extends AddFromLinkScreen {
 		if (minecraft != null) {
 			minecraft.execute(() -> {
 				modsData.addAll(tempMods);
-				modsList.setData(modsData.stream().map(mod -> new DashboardList.Data(mod.name, mod.description, Text.translatable("gui.updater.mod_details", mod.downloads, mod.dateModified).getString())).collect(Collectors.toList()));
-				updatePositions();
+				setData();
 				setMessage(modsData.isEmpty() ? Text.translatable("gui.updater.no_results", text) : null);
 			});
 		}
@@ -95,5 +94,10 @@ public class SearchModsScreen extends AddFromLinkScreen {
 
 	private void updatePositions() {
 		modsList.x = modsData.isEmpty() ? width : SQUARE_SIZE;
+	}
+
+	private void setData() {
+		modsList.setData(modsData.stream().map(mod -> new DashboardList.Data((Config.containsMod(mod) ? String.format("(%s) ", Text.translatable("gui.updater.added").getString()) : "") + mod.name.trim(), mod.description, Text.translatable("gui.updater.mod_details", mod.downloads, mod.dateModified).getString())).collect(Collectors.toList()));
+		updatePositions();
 	}
 }

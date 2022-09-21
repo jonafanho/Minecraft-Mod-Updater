@@ -2,6 +2,7 @@
 	"gui.updater.add": "Add",
 	"gui.updater.add_mod_from_link": "Add Mod From URL",
 	"gui.updater.add_server_pack_from_link": "Add Modpack From URL",
+	"gui.updater.added": "Added",
 	"gui.updater.added_jar_file": "Mod jar file added from URL \"%s\"",
 	"gui.updater.added_mod_url": "Mod added from URL \"%s\"",
 	"gui.updater.added_modpack": "Modpack added from URL \"%s\"",

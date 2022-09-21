@@ -118,17 +118,25 @@ public class Config {
 	}
 
 	public static void addModObject(Mod mod) {
+		if (!containsMod(mod)) {
+			final Set<ModId> modIds = mod.modIds;
+			modIds.stream().findFirst().ifPresent(modId -> MOD_OBJECTS.add(new ModObject(modId.modId, modId.modProvider, mod.name, mod.description)));
+			Collections.sort(MOD_OBJECTS);
+		}
+	}
+
+	public static boolean containsMod(Mod mod) {
 		final Set<ModId> modIds = mod.modIds;
+
 		for (final ModObject modObject : MOD_OBJECTS) {
 			for (final ModId modId : modIds) {
 				if (modId.modId.equals(modObject.modId) && modId.modProvider.equals(modObject.modProvider)) {
-					return;
+					return true;
 				}
 			}
 		}
 
-		modIds.stream().findFirst().ifPresent(modId -> MOD_OBJECTS.add(new ModObject(modId.modId, modId.modProvider, mod.name, mod.description)));
-		Collections.sort(MOD_OBJECTS);
+		return false;
 	}
 
 	public static boolean addModObject(String url) {
