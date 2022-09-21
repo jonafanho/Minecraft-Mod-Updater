@@ -4,37 +4,28 @@ import com.jonafanho.apitools.Mod;
 import com.jonafanho.apitools.ModLoader;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.Util;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.network.chat.Component;
 import updater.Config;
 import updater.Keys;
-import updater.mappings.ScreenMapper;
 import updater.mappings.Text;
-import updater.mappings.UtilitiesClient;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SearchModsScreen extends ScreenMapper implements IGui {
+public class SearchModsScreen extends AddFromLinkScreen {
 
-	private Component message = Text.translatable("gui.updater.browse_mods");
-
-	private final ConfigScreen configScreen;
-	private final EditBox textFieldSearch;
-	private final Button buttonSearch;
+	private final String minecraftVersion;
+	private final ModLoader modLoader;
 	private final DashboardList modsList;
 	private final List<Mod> modsData = new ArrayList<>();
 
 	private static final String FEATURED = "jonafanho";
 
 	public SearchModsScreen(String minecraftVersion, ModLoader modLoader, ConfigScreen configScreen) {
-		super(Text.literal(""));
-		this.configScreen = configScreen;
+		super(configScreen, false, Text.translatable("gui.updater.browse_mods"), Text.translatable("gui.updater.search"));
+		this.minecraftVersion = minecraftVersion;
+		this.modLoader = modLoader;
 
-		textFieldSearch = new EditBox(Minecraft.getInstance().font, 0, 0, 0, SQUARE_SIZE, Text.literal(""));
 		modsList = new DashboardList((data, index) -> {
 			Config.addModObject(modsData.get(index));
 			onClose();
@@ -48,63 +39,22 @@ public class SearchModsScreen extends ScreenMapper implements IGui {
 					break;
 			}
 		}), "+", 3);
-		buttonSearch = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.search"), button -> {
-			final String query = textFieldSearch.getValue();
-			modsData.clear();
-			modsData.addAll(Mod.searchMods(query, minecraftVersion, modLoader, Keys.CURSE_FORGE_KEY));
-			modsData.sort((a, b) -> a.authors.contains(FEATURED) ? -1 : b.authors.contains(FEATURED) ? 1 : a.compareTo(b));
-			modsList.setData(modsData.stream().map(mod -> new DashboardList.Data(mod.name, mod.description, Text.translatable("gui.updater.mod_details", mod.downloads, mod.dateModified).getString())).collect(Collectors.toList()));
-			updatePositions();
-			message = Text.translatable("gui.updater.no_results", query);
-		});
 	}
 
 	@Override
 	protected void init() {
 		super.init();
-
-		IGui.setPositionAndWidth(textFieldSearch, SQUARE_SIZE + TEXT_FIELD_PADDING / 2, SQUARE_SIZE + TEXT_FIELD_PADDING / 2, width - SQUARE_SIZE * 5 - TEXT_FIELD_PADDING);
-		IGui.setPositionAndWidth(buttonSearch, width - SQUARE_SIZE * 4, SQUARE_SIZE + TEXT_FIELD_PADDING / 2, SQUARE_SIZE * 3);
-
-		textFieldSearch.setResponder(text -> setSearchButtonActive());
-		setSearchButtonActive();
 		updatePositions();
-
-		modsList.y = SQUARE_SIZE * 2 + TEXT_FIELD_PADDING;
+		modsList.y = getYOffset();
 		modsList.width = width - SQUARE_SIZE * 2;
-		modsList.height = height - SQUARE_SIZE * 3 - TEXT_FIELD_PADDING;
-
-		addDrawableChild(textFieldSearch);
-		addDrawableChild(buttonSearch);
+		modsList.height = height - SQUARE_SIZE - getYOffset();
 		modsList.init(this::addDrawableChild);
 	}
 
 	@Override
-	public void render(PoseStack matrices, int mouseX, int mouseY, float delta) {
-		try {
-			renderBackground(matrices);
-			modsList.render(matrices, font);
-			super.render(matrices, mouseX, mouseY, delta);
-			if (modsData.isEmpty()) {
-				font.drawShadow(matrices, message, SQUARE_SIZE, SQUARE_SIZE * 2 + TEXT_FIELD_PADDING + TEXT_PADDING, ARGB_WHITE);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	@Override
 	public void tick() {
-		textFieldSearch.tick();
+		super.tick();
 		modsList.tick();
-	}
-
-	@Override
-	public void onClose() {
-		super.onClose();
-		if (minecraft != null) {
-			UtilitiesClient.setScreen(minecraft, configScreen);
-		}
 	}
 
 	@Override
@@ -118,8 +68,29 @@ public class SearchModsScreen extends ScreenMapper implements IGui {
 		return super.mouseScrolled(mouseX, mouseY, amount);
 	}
 
-	private void setSearchButtonActive() {
-		buttonSearch.active = !textFieldSearch.getValue().isEmpty();
+	@Override
+	protected void renderAdditional(PoseStack matrices) {
+		modsList.render(matrices, font);
+	}
+
+	@Override
+	protected void onClickBeforeThread() {
+		modsData.clear();
+		updatePositions();
+	}
+
+	@Override
+	protected void onClick(String text) {
+		final List<Mod> tempMods = Mod.searchMods(text, minecraftVersion, modLoader, Keys.CURSE_FORGE_KEY);
+		tempMods.sort((a, b) -> a.authors.contains(FEATURED) ? -1 : b.authors.contains(FEATURED) ? 1 : a.compareTo(b));
+		if (minecraft != null) {
+			minecraft.execute(() -> {
+				modsData.addAll(tempMods);
+				modsList.setData(modsData.stream().map(mod -> new DashboardList.Data(mod.name, mod.description, Text.translatable("gui.updater.mod_details", mod.downloads, mod.dateModified).getString())).collect(Collectors.toList()));
+				updatePositions();
+				setMessage(modsData.isEmpty() ? Text.translatable("gui.updater.no_results", text) : null);
+			});
+		}
 	}
 
 	private void updatePositions() {

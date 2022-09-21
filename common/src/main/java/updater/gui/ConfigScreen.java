@@ -5,6 +5,7 @@ import com.jonafanho.apitools.ModLoader;
 import com.jonafanho.apitools.NetworkUtils;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.components.Button;
 import updater.Config;
@@ -43,53 +44,54 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 		Config.loadConfig(gameDirectory);
 
 		buttonOpenFolder = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("modmenu.modsFolder"), button -> Util.getPlatform().openFile(modsLocal.toFile()));
-		buttonBrowseMods = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.browse_mods"), button -> {
-			if (minecraft != null) {
-				UtilitiesClient.setScreen(minecraft, new SearchModsScreen(minecraftVersion, modLoader, this));
-			}
-		});
+		buttonBrowseMods = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.browse_mods"), button -> UtilitiesClient.setScreen(Minecraft.getInstance(), new SearchModsScreen(minecraftVersion, modLoader, this)));
 		buttonDiscardChanges = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.discard_changes"), button -> {
 			Config.loadConfig(gameDirectory);
 			updateListData(false);
 		});
-		buttonAddServerPackFromLink = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.add_server_pack_from_link"), button -> {
-			if (minecraft != null) {
-				UtilitiesClient.setScreen(minecraft, new AddFromLinkScreen(this, url -> {
-					final boolean[] success = {false};
-					NetworkUtils.openConnectionSafeJson(url, jsonElement -> {
-						try {
-							Config.getModObjects(jsonElement.getAsJsonArray());
-							Config.addServerUrl(url);
-							updateListData(true);
-							success[0] = true;
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					});
-					return success[0] ? null : Text.translatable("gui.updater.invalid_modpack_url").getString();
-				}, Text.translatable("gui.updater.add_server_pack_from_link")));
-			}
-		});
-		buttonAddModFromLink = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.add_mod_from_link"), button -> {
-			if (minecraft != null) {
-				UtilitiesClient.setScreen(minecraft, new AddFromLinkScreen(this, url -> {
-					final Mod mod = Mod.getModFromUrl(url, Keys.CURSE_FORGE_KEY);
-					if (mod == null) {
-						Config.addModObject(url);
-					} else {
-						Config.addModObject(mod);
+		buttonAddServerPackFromLink = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.add_server_pack_from_link"), button -> UtilitiesClient.setScreen(Minecraft.getInstance(), new AddFromLinkScreen(this, true, Text.translatable("gui.updater.add_server_pack_from_link"), Text.translatable("gui.updater.add")) {
+			@Override
+			protected void onClick(String text) {
+				final boolean[] success = {false};
+				NetworkUtils.openConnectionSafeJson(text, jsonElement -> {
+					try {
+						Config.getModObjects(jsonElement.getAsJsonArray());
+						success[0] = true;
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				});
+				Minecraft.getInstance().execute(() -> {
+					if (success[0]) {
+						Config.addServerUrl(text);
 					}
 					updateListData(true);
-					return null;
-				},
-						Text.translatable("gui.updater.add_mod_from_link"),
-						Text.translatable("gui.updater.examples").getString(),
-						"https://www.curseforge.com/minecraft/mc-mods/minecraft-transit-railway",
-						"https://modrinth.com/mod/minecraft-transit-railway",
-						"https://github.com/zbx1425/SlideShow/releases/download/0.5.4/slideshow-1.18.2-0.5.4.jar"
-				));
+					setMessage(success[0] ? Text.translatable("gui.updater.added_modpack", text) : Text.translatable("gui.updater.invalid_modpack_url"));
+				});
 			}
-		});
+		}));
+		buttonAddModFromLink = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.add_mod_from_link"), button -> UtilitiesClient.setScreen(Minecraft.getInstance(), new AddFromLinkScreen(this, true,
+				Text.translatable("gui.updater.add_mod_from_link"),
+				Text.translatable("gui.updater.add"),
+				Text.translatable("gui.updater.examples").getString(),
+				"https://www.curseforge.com/minecraft/mc-mods/minecraft-transit-railway",
+				"https://modrinth.com/mod/minecraft-transit-railway",
+				"https://github.com/zbx1425/SlideShow/releases/download/0.5.4/slideshow-1.18.2-0.5.4.jar"
+		) {
+			@Override
+			protected void onClick(String text) {
+				final Mod mod = Mod.getModFromUrl(text, Keys.CURSE_FORGE_KEY);
+				Minecraft.getInstance().execute(() -> {
+					if (mod == null) {
+						setMessage(Config.addModObject(text) ? Text.translatable("gui.updater.added_jar_file", text) : Text.translatable("gui.updater.failed_to_add_mod"));
+					} else {
+						Config.addModObject(mod);
+						setMessage(Text.translatable("gui.updater.added_mod_url", text));
+					}
+					updateListData(true);
+				});
+			}
+		}));
 		buttonRelaunchMinecraft = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.relaunch_minecraft"), button -> {
 			Config.saveConfig(gameDirectory);
 			launch.run();

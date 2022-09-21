@@ -10,35 +10,34 @@ import updater.mappings.ScreenMapper;
 import updater.mappings.Text;
 import updater.mappings.UtilitiesClient;
 
-import java.util.function.Function;
+public abstract class AddFromLinkScreen extends ScreenMapper implements IGui {
 
-public class AddFromLinkScreen extends ScreenMapper implements IGui {
-
-	private String message = "";
+	private Component message = null;
 
 	private final ConfigScreen configScreen;
-	private final EditBox textFieldUrl;
+	private final EditBox textField;
 	private final Button buttonAdd;
 	private final Component mainText;
 	private final String[] extraText;
 
-	public AddFromLinkScreen(ConfigScreen configScreen, Function<String, String> onAdd, Component mainText, String... extraText) {
+	public AddFromLinkScreen(ConfigScreen configScreen, boolean clearTextBoxAfterSearching, Component mainText, Component buttonText, String... extraText) {
 		super(Text.literal(""));
 		this.configScreen = configScreen;
 		this.mainText = mainText;
 		this.extraText = extraText;
 
-		textFieldUrl = new EditBox(Minecraft.getInstance().font, 0, 0, 0, SQUARE_SIZE, Text.literal(""));
-		buttonAdd = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.add"), button -> {
-			final String url = textFieldUrl.getValue();
-			if (!url.isEmpty()) {
-				final String result = onAdd.apply(url);
-				textFieldUrl.setValue("");
-				if (result == null) {
-					onClose();
-				} else {
-					message = result;
+		textField = new EditBox(Minecraft.getInstance().font, 0, 0, 0, SQUARE_SIZE, Text.literal(""));
+		buttonAdd = new Button(0, 0, 0, SQUARE_SIZE, buttonText, button -> {
+			final String text = textField.getValue();
+			if (!text.isEmpty()) {
+				if (clearTextBoxAfterSearching) {
+					textField.setValue("");
 				}
+				onClickBeforeThread();
+				button.active = false;
+				textField.active = false;
+				message = Text.translatable("gui.updater.please_wait");
+				new Thread(() -> onClick(text)).start();
 			}
 		});
 	}
@@ -47,15 +46,15 @@ public class AddFromLinkScreen extends ScreenMapper implements IGui {
 	protected void init() {
 		super.init();
 
-		final int yStart = SQUARE_SIZE + (TEXT_HEIGHT + TEXT_PADDING) * (1 + extraText.length) + TEXT_FIELD_PADDING / 2;
-		IGui.setPositionAndWidth(textFieldUrl, SQUARE_SIZE + TEXT_FIELD_PADDING / 2, yStart, width - SQUARE_SIZE * 5 - TEXT_FIELD_PADDING);
+		final int yStart = getYOffset() - TEXT_PADDING - SQUARE_SIZE - TEXT_FIELD_PADDING / 2;
+		IGui.setPositionAndWidth(textField, SQUARE_SIZE + TEXT_FIELD_PADDING / 2, yStart, width - SQUARE_SIZE * 5 - TEXT_FIELD_PADDING);
 		IGui.setPositionAndWidth(buttonAdd, width - SQUARE_SIZE * 4, yStart, SQUARE_SIZE * 3);
 
-		textFieldUrl.setResponder(text -> setAddButtonActive());
-		textFieldUrl.setMaxLength(2048);
+		textField.setResponder(text -> setAddButtonActive());
+		textField.setMaxLength(2048);
 		setAddButtonActive();
 
-		addDrawableChild(textFieldUrl);
+		addDrawableChild(textField);
 		addDrawableChild(buttonAdd);
 	}
 
@@ -64,10 +63,13 @@ public class AddFromLinkScreen extends ScreenMapper implements IGui {
 		try {
 			renderBackground(matrices);
 			Gui.drawCenteredString(matrices, font, mainText, width / 2, SQUARE_SIZE, ARGB_WHITE);
-			font.drawShadow(matrices, message, SQUARE_SIZE, SQUARE_SIZE * 2 + (TEXT_HEIGHT + TEXT_PADDING) * (1 + extraText.length) + TEXT_PADDING + TEXT_FIELD_PADDING, ARGB_WHITE);
+			if (message != null) {
+				font.drawShadow(matrices, message, SQUARE_SIZE, getYOffset(), ARGB_WHITE);
+			}
 			for (int i = 0; i < extraText.length; i++) {
 				font.drawShadow(matrices, extraText[i], SQUARE_SIZE, SQUARE_SIZE + (TEXT_HEIGHT + TEXT_PADDING) * (1 + i), ARGB_WHITE);
 			}
+			renderAdditional(matrices);
 			super.render(matrices, mouseX, mouseY, delta);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -76,7 +78,7 @@ public class AddFromLinkScreen extends ScreenMapper implements IGui {
 
 	@Override
 	public void tick() {
-		textFieldUrl.tick();
+		textField.tick();
 	}
 
 	@Override
@@ -87,10 +89,28 @@ public class AddFromLinkScreen extends ScreenMapper implements IGui {
 		}
 	}
 
+	protected abstract void onClick(String text);
+
+	protected void onClickBeforeThread() {
+	}
+
+	protected void setMessage(Component message) {
+		setAddButtonActive();
+		this.message = message;
+	}
+
+	protected void renderAdditional(PoseStack matrices) {
+	}
+
+	protected int getYOffset() {
+		return SQUARE_SIZE * 2 + (TEXT_HEIGHT + TEXT_PADDING) * (1 + extraText.length) + TEXT_PADDING + TEXT_FIELD_PADDING;
+	}
+
 	private void setAddButtonActive() {
-		buttonAdd.active = !textFieldUrl.getValue().isEmpty();
+		buttonAdd.active = !textField.getValue().isEmpty();
 		if (buttonAdd.active) {
-			message = "";
+			message = null;
 		}
+		textField.active = true;
 	}
 }

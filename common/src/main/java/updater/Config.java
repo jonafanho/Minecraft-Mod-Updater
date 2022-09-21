@@ -131,24 +131,27 @@ public class Config {
 		Collections.sort(MOD_OBJECTS);
 	}
 
-	public static void addModObject(String url) {
+	public static boolean addModObject(String url) {
 		for (final ModObject modObject : MOD_OBJECTS) {
 			if (url.equals(modObject.url)) {
-				return;
+				return true;
 			}
 		}
 
+		final boolean[] success = {false};
 		if (!url.isEmpty()) {
 			final String[] urlSplit = url.split("/");
 			NetworkUtils.openConnectionSafe(url, inputStream -> {
 				try {
 					MOD_OBJECTS.add(new ModObject(Downloader.cleanModName(urlSplit[urlSplit.length - 1]), url, DigestUtils.sha1Hex(inputStream), null, null));
 					Collections.sort(MOD_OBJECTS);
+					success[0] = true;
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}, "User-Agent", "Mozilla/5.0");
 		}
+		return success[0];
 	}
 
 	public static void removeServerUrl(int index) {
