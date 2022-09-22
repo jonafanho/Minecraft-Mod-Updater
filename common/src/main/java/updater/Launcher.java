@@ -43,7 +43,7 @@ public class Launcher {
 
 			final String command = formatPath(String.format(
 					"%s %s -cp %s %s %s",
-					checkForSpace(System.getProperty("java.home") + "/bin/javaw"),
+					checkForSpace(System.getProperty("java.home") + "/bin/java"),
 					runtimeMXBean.getInputArguments().stream().map(Launcher::checkForSpaceAfterEquals).collect(Collectors.joining(" ")),
 					classPath.stream().map(path -> checkForSpace(path.toString())).collect(Collectors.joining(";")),
 					className,
