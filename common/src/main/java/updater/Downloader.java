@@ -25,6 +25,7 @@ public class Downloader {
 	private final Path modsPathBackup;
 	private final Set<String> visitedMods = new HashSet<>();
 	private final Set<File> modsToDelete = new HashSet<>();
+	private final Set<String> blacklistedSha1 = new HashSet<>();
 
 	private static final int DOWNLOAD_ATTEMPTS = 5;
 	private static final byte[] EMPTY_ZIP = {80, 75, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -58,6 +59,7 @@ public class Downloader {
 
 	public void downloadMod(ModId modId) {
 		final List<ModFile> modFiles = modId.getModFiles(minecraftVersion, modLoader, Keys.CURSE_FORGE_KEY);
+		modFiles.forEach(modFile -> blacklistedSha1.add(modFile.sha1));
 		if (!visitedMods.contains(modId.modId) && modFiles.size() > 0) {
 			visitedMods.add(modId.modId);
 			final ModFile modFile = modFiles.get(0);
@@ -70,16 +72,21 @@ public class Downloader {
 		iterateFiles(modsPathLocal.toFile(), false, file -> {
 			final Path modPath = modsPath.resolve(file.getName());
 			final File modFile = modPath.toFile();
+			final String modHash = getHash(modPath);
 			final Path sourcePath = file.toPath();
 			final String sourceHash = getHash(sourcePath);
 
-			if (sourceHash != null && !sourceHash.equals(getHash(modPath))) {
-				specialCopy(sourcePath, modFile);
-				Updater.LOGGER.info("Copied " + modPath);
-				hasUpdate = true;
-			}
+			if (!blacklistedSha1.contains(sourceHash) && !blacklistedSha1.contains(modHash)) {
+				if (sourceHash != null && !sourceHash.equals(modHash)) {
+					specialCopy(sourcePath, modFile);
+					Updater.LOGGER.info("Copied " + modPath);
+					hasUpdate = true;
+				}
 
-			modsToDelete.remove(modFile);
+				modsToDelete.remove(modFile);
+			} else {
+				Updater.LOGGER.info("Skipping duplicate local mod " + modPath);
+			}
 		});
 
 		modsToDelete.forEach(file -> {
