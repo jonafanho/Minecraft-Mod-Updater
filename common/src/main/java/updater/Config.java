@@ -7,8 +7,6 @@ import com.google.gson.JsonParser;
 import com.jonafanho.apitools.Mod;
 import com.jonafanho.apitools.ModId;
 import com.jonafanho.apitools.ModProvider;
-import com.jonafanho.apitools.NetworkUtils;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
@@ -139,27 +137,15 @@ public class Config {
 		return false;
 	}
 
-	public static boolean addModObject(String url) {
+	public static void addModObject(String fileName, String url, String sha1) {
 		for (final ModObject modObject : MOD_OBJECTS) {
 			if (url.equals(modObject.url)) {
-				return true;
+				return;
 			}
 		}
 
-		final boolean[] success = {false};
-		if (!url.isEmpty()) {
-			final String[] urlSplit = url.split("/");
-			NetworkUtils.openConnectionSafe(url, inputStream -> {
-				try {
-					MOD_OBJECTS.add(new ModObject(Downloader.cleanModName(urlSplit[urlSplit.length - 1]), url, DigestUtils.sha1Hex(inputStream), null, null));
-					Collections.sort(MOD_OBJECTS);
-					success[0] = true;
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}, "User-Agent", "Mozilla/5.0");
-		}
-		return success[0];
+		MOD_OBJECTS.add(new ModObject(fileName, url, sha1, null, null));
+		Collections.sort(MOD_OBJECTS);
 	}
 
 	public static void removeServerUrl(int index) {

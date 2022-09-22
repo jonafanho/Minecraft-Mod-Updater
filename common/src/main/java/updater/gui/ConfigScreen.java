@@ -8,6 +8,7 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.components.Button;
+import org.apache.commons.io.FileUtils;
 import updater.Config;
 import updater.Downloader;
 import updater.Keys;
@@ -21,6 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.jar.JarFile;
 
 public class ConfigScreen extends ScreenMapper implements IGui {
 
@@ -31,8 +33,7 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 	private final Button buttonOpenFolder;
 	private final Button buttonBrowseMods;
 	private final Button buttonDiscardChanges;
-	private final Button buttonAddServerPackFromLink;
-	private final Button buttonAddModFromLink;
+	private final Button buttonAddFromLink;
 	private final Button buttonRelaunchMinecraft;
 	private final DashboardList serverList;
 	private final DashboardList localList;
@@ -49,29 +50,8 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 			Config.loadConfig(gameDirectory);
 			updateListData(false);
 		});
-		buttonAddServerPackFromLink = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.add_server_pack_from_link"), button -> UtilitiesClient.setScreen(Minecraft.getInstance(), new AddFromLinkScreen(this, true, Text.translatable("gui.updater.add_server_pack_from_link"), Text.translatable("gui.updater.add")) {
-			@Override
-			protected void onClick(String text) {
-				final boolean[] success = {false};
-				NetworkUtils.openConnectionSafeJson(text, jsonElement -> {
-					try {
-						Config.getModObjects(jsonElement.getAsJsonArray());
-						success[0] = true;
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				});
-				Minecraft.getInstance().execute(() -> {
-					if (success[0]) {
-						Config.addServerUrl(text);
-					}
-					updateListData(true);
-					setMessage(success[0] ? Text.translatable("gui.updater.added_modpack", text) : Text.translatable("gui.updater.invalid_modpack_url"));
-				});
-			}
-		}));
-		buttonAddModFromLink = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.add_mod_from_link"), button -> UtilitiesClient.setScreen(Minecraft.getInstance(), new AddFromLinkScreen(this, true,
-				Text.translatable("gui.updater.add_mod_from_link"),
+		buttonAddFromLink = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.add_from_link"), button -> UtilitiesClient.setScreen(Minecraft.getInstance(), new AddFromLinkScreen(this, true,
+				Text.translatable("gui.updater.add_from_link"),
 				Text.translatable("gui.updater.add"),
 				Text.translatable("gui.updater.examples").getString(),
 				"https://www.curseforge.com/minecraft/mc-mods/minecraft-transit-railway",
@@ -81,15 +61,55 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 			@Override
 			protected void onClick(String text) {
 				final Mod mod = Mod.getModFromUrl(text, Keys.CURSE_FORGE_KEY);
-				Minecraft.getInstance().execute(() -> {
-					if (mod == null) {
-						setMessage(Config.addModObject(text) ? Text.translatable("gui.updater.added_jar_file", text) : Text.translatable("gui.updater.failed_to_add_mod"));
-					} else {
+
+				if (mod == null) {
+					final boolean[] failed = {true};
+					final String[] urlSplit = text.split("/");
+
+					NetworkUtils.openConnectionSafe(text, inputStream -> {
+						try {
+							final String fileName = Downloader.cleanModName(urlSplit[urlSplit.length - 1]);
+							final Path tempPath = gameDirectory.resolve(Updater.MODS_TEMP_DIRECTORY).resolve(fileName + ".jar");
+							FileUtils.copyInputStreamToFile(inputStream, tempPath.toFile());
+							try (final JarFile jarFile = new JarFile(tempPath.toFile())) {
+								Updater.LOGGER.info("Valid jar file " + jarFile.getName());
+							}
+							final String sha1 = Downloader.getHash(tempPath);
+							Minecraft.getInstance().execute(() -> {
+								Config.addModObject(fileName, text, sha1);
+								setMessage(Text.translatable("gui.updater.added_jar_file", text));
+								updateListData(true);
+							});
+							failed[0] = false;
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}, "User-Agent", "Mozilla/5.0");
+
+					if (failed[0]) {
+						final int[] modCount = {-1};
+						NetworkUtils.openConnectionSafeJson(text, jsonElement -> {
+							try {
+								modCount[0] = Config.getModObjects(jsonElement.getAsJsonArray()).size();
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+						});
+						Minecraft.getInstance().execute(() -> {
+							if (modCount[0] > 0) {
+								Config.addServerUrl(text);
+							}
+							updateListData(true);
+							setMessage(modCount[0] == 0 ? Text.translatable("gui.updater.no_mods_in_modpack") : modCount[0] > 0 ? Text.translatable("gui.updater.added_modpack", modCount[0], text) : Text.translatable("gui.updater.invalid_url"));
+						});
+					}
+				} else {
+					Minecraft.getInstance().execute(() -> {
 						Config.addModObject(mod);
 						setMessage(Text.translatable("gui.updater.added_mod_url", text));
-					}
-					updateListData(true);
-				});
+						updateListData(true);
+					});
+				}
 			}
 		}));
 		buttonRelaunchMinecraft = new Button(0, 0, 0, SQUARE_SIZE, Text.translatable("gui.updater.relaunch_minecraft"), button -> {
@@ -126,8 +146,7 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 		IGui.setPositionAndWidth(buttonOpenFolder, SQUARE_SIZE, height - SQUARE_SIZE * 3, smallColumnWidth);
 		IGui.setPositionAndWidth(buttonBrowseMods, SQUARE_SIZE + smallColumnWidth, height - SQUARE_SIZE * 3, smallColumnWidth);
 		IGui.setPositionAndWidth(buttonDiscardChanges, SQUARE_SIZE + smallColumnWidth * 2, height - SQUARE_SIZE * 3, smallColumnWidth);
-		IGui.setPositionAndWidth(buttonAddServerPackFromLink, SQUARE_SIZE, height - SQUARE_SIZE * 2, smallColumnWidth);
-		IGui.setPositionAndWidth(buttonAddModFromLink, SQUARE_SIZE + smallColumnWidth, height - SQUARE_SIZE * 2, smallColumnWidth);
+		IGui.setPositionAndWidth(buttonAddFromLink, SQUARE_SIZE, height - SQUARE_SIZE * 2, smallColumnWidth * 2);
 		IGui.setPositionAndWidth(buttonRelaunchMinecraft, SQUARE_SIZE + smallColumnWidth * 2, height - SQUARE_SIZE * 2, smallColumnWidth);
 
 		final int columnWidth = (width - SQUARE_SIZE * 3) / 2;
@@ -146,8 +165,7 @@ public class ConfigScreen extends ScreenMapper implements IGui {
 		addDrawableChild(buttonOpenFolder);
 		addDrawableChild(buttonBrowseMods);
 		addDrawableChild(buttonDiscardChanges);
-		addDrawableChild(buttonAddServerPackFromLink);
-		addDrawableChild(buttonAddModFromLink);
+		addDrawableChild(buttonAddFromLink);
 		addDrawableChild(buttonRelaunchMinecraft);
 		serverList.init(this::addDrawableChild);
 		localList.init(this::addDrawableChild);

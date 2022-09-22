@@ -156,6 +156,17 @@ public class Downloader {
 		});
 	}
 
+	public static String getHash(Path path) {
+		if (Files.exists(path)) {
+			try (final InputStream inputStream = Files.newInputStream(path)) {
+				return DigestUtils.sha1Hex(inputStream);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return null;
+	}
+
 	private static void specialCopy(Path source, File destination) {
 		try {
 			try (final InputStream inputStream = source == null ? new ByteArrayInputStream(EMPTY_ZIP) : Files.newInputStream(source)) {
@@ -169,17 +180,6 @@ public class Downloader {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-	}
-
-	private static String getHash(Path path) {
-		if (Files.exists(path)) {
-			try (final InputStream inputStream = Files.newInputStream(path)) {
-				return DigestUtils.sha1Hex(inputStream);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-		return null;
 	}
 
 	private static boolean isModUpdater(File file) {
