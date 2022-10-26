@@ -27,11 +27,5 @@ bin/
 # macos
 
 *.DS_Store
-
-# fabric
-
-run/
-latest.log
-Keys.java
-mappings
-.architectury-transformer/
+temp/
+Constants.java
