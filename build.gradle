@@ -1,4 +1,3 @@
-import groovy.json.JsonSlurper
 import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins {
@@ -8,19 +7,25 @@ plugins {
 
 group "updater"
 version rootProject.version
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
-def minecraft_version = "1.18.2"
+dependencies {
+	implementation "com.google.code.gson:gson:2.10"
+	implementation "commons-io:commons-io:2.11.0"
+	implementation "commons-codec:commons-codec:1.15"
+}
 
 jar {
 	manifest {
 		attributes "Main-Class": "updater.MinecraftModUpdater"
 	}
+	from {
+		configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+	}
 }
 
 task setupFiles() {
-	def fabric_loader_version = new JsonSlurper().parse(("https://meta.fabricmc.net/v2/versions/loader/" + minecraft_version).toURL())[0]["loader"]["version"]
-	System.out.println("Fabric Loader: " + fabric_loader_version)
-
 	def files = ["ferium-linux-arm64-nogui", "ferium-linux", "ferium-macos-arm", "ferium-macos-x64", "ferium-windows-msvc"]
 	files.forEach(file -> {
 		download {
@@ -46,7 +51,6 @@ task setupFiles() {
 		outputs.upToDateWhen { false }
 		from "profile/mmc-pack.json"
 		into "build/libs"
-		filter(ReplaceTokens, tokens: ["fabric-loader": fabric_loader_version, "minecraft": minecraft_version])
 	}
 	copy {
 		outputs.upToDateWhen { false }
@@ -58,7 +62,7 @@ task setupFiles() {
 		outputs.upToDateWhen { false }
 		from "src/main/ConstantsTemplate.java"
 		into "src/main/java/updater"
-		filter(ReplaceTokens, tokens: ["version": minecraft_version, "files": String.join(",", files.collect { file -> '"' + file + '"' })])
+		filter(ReplaceTokens, tokens: ["files": String.join(",", files.collect { file -> '"' + file + '"' })])
 		rename "(.+)Template.java", "\$1.java"
 	}
 }
@@ -71,4 +75,8 @@ allprojects {
 			}
 		}
 	}
+}
+
+repositories {
+	mavenCentral()
 }
